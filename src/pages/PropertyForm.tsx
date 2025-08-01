@@ -1,32 +1,14 @@
-import { useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { propertySchema } from "../schema/propertySchema";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   DynamicList,
-  EXTRAS,
   FeatureCheckboxGroup,
   SERVICES,
+  EXTRAS,
 } from "../components/CustomInputs";
-
-interface FormData {
-  title: string;
-  description: string;
-  price: string;
-  location: string;
-  lat: string;
-  lng: string;
-  imageUrls: string[];
-  videoUrls: string[];
-  propertyType: string;
-  environments: string;
-  environmentsList: string[];
-  bedrooms: string;
-  bathrooms: string;
-  condition: string;
-  age: string;
-  services: string[];
-  extras: string[];
-  measuresList: string[];
-}
+import { useEffect, useState } from "react";
 
 const PROPERTY_TYPES = [
   "Departamento",
@@ -39,411 +21,633 @@ const PROPERTY_TYPES = [
   "Galpón",
   "Quinta",
 ];
+const OPERATION_TYPES = ["Venta", "Alquiler", "Alquiler temporal"];
+const PRICE_BY = ["día", "semana", "mes"];
 
-const initialFormData: FormData = {
-  title: "",
-  description: "",
-  price: "",
-  location: "",
-  lat: "",
-  lng: "",
-  imageUrls: [""],
-  videoUrls: [""],
-  propertyType: "",
-  environments: "",
-  environmentsList: [""],
-  bedrooms: "",
-  bathrooms: "",
-  condition: "",
-  age: "",
-  services: [],
-  extras: [],
-  measuresList: [""],
-};
+export default function PropertyFormRH() {
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    clearErrors,
+    formState: { errors, isValid },
+  } = useForm({
+    resolver: yupResolver(propertySchema),
+    mode: "onChange",
+    defaultValues: {},
+  });
 
-export default function PropertyForm() {
-  const { id } = useParams<{ id?: string }>();
-  const isEdit = Boolean(id);
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const { id } = useParams();
+  const propertyType = watch("propertyType");
+  const operationType = watch("operationType");
+  const [triedSubmit, setTriedSubmit] = useState(false);
 
-  // Generic list manager
-  const updateList = <K extends keyof FormData>(
-    field: K,
-    action: "add" | "update" | "remove",
-    index?: number,
-    value?: string
-  ) => {
-    setFormData((prev) => {
-      const list = [...(prev[field] as string[])];
-      if (action === "add") list.push("");
-      else if (action === "remove" && typeof index === "number")
-        list.splice(index, 1);
-      else if (
-        action === "update" &&
-        typeof index === "number" &&
-        value !== undefined
-      )
-        list[index] = value;
-      return { ...prev, [field]: list };
-    });
-  };
-
-  // Handle input/select change or list update when index provided
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-    index?: number
-  ) => {
-    const { name, value } = e.target;
-    if (typeof index === "number") {
-      updateList(name as keyof FormData, "update", index, value);
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
-  // Load existing data if editing
   useEffect(() => {
-    if (!isEdit) return;
-    fetch(`http://localhost:3000/api/properties/${id}`)
-      .then((res) => res.json())
-      .then((data: any) => {
-        setFormData({
-          title: data.title,
-          description: data.description || "",
-          price: String(data.price),
-          location: data.location,
-          lat: data.lat?.toString() || "",
-          lng: data.lng?.toString() || "",
-          imageUrls: data.imageUrls.length ? data.imageUrls : [""],
-          videoUrls: data.videoUrls.length ? data.videoUrls : [""],
-          propertyType: data.propertyType,
-          environments: String(data.environments),
-          environmentsList: data.environmentsList.length
-            ? data.environmentsList
-            : [""],
-          bedrooms: String(data.bedrooms),
-          bathrooms: String(data.bathrooms),
-          condition: data.condition,
-          age: data.age,
-          services: data.features,
-          extras: data.extras,
-          measuresList: data.measuresList.length ? data.measuresList : [""],
+    if (id) {
+      fetch(`http://localhost:3000/api/properties/${id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          reset({
+            ...data,
+            price: data.price?.toString() ?? "",
+            environments: data.environments?.toString() ?? "",
+            bedrooms: data.bedrooms?.toString() ?? "",
+            bathrooms: data.bathrooms?.toString() ?? "",
+            lat: data.lat?.toString() ?? "",
+            lng: data.lng?.toString() ?? "",
+            floor: data.floor?.toString() ?? "",
+            apartmentNumber: data.apartmentNumber?.toString() ?? "",
+            pricePerDay: data.pricePerDay?.toString() ?? "",
+            pricePerWeek: data.pricePerWeek?.toString() ?? "",
+            pricePerMonth: data.pricePerMonth?.toString() ?? "",
+            imageUrls:
+              Array.isArray(data.imageUrls) && data.imageUrls.length
+                ? data.imageUrls
+                : [""],
+            videoUrls:
+              Array.isArray(data.videoUrls) && data.videoUrls.length
+                ? data.videoUrls
+                : [""],
+            measuresList:
+              Array.isArray(data.measuresList) && data.measuresList.length
+                ? data.measuresList
+                : [""],
+            environmentsList:
+              Array.isArray(data.environmentsList) &&
+              data.environmentsList.length
+                ? data.environmentsList
+                : [""],
+            services: Array.isArray(data.services) ? data.services : [],
+            extras: Array.isArray(data.extras) ? data.extras : [],
+            condition: data.condition ?? "",
+            age: data.age ?? "",
+            propertyType: data.propertyType ?? "",
+            operationType: data.operationType ?? "",
+            location: data.location ?? "",
+            title: data.title ?? "",
+            description: data.description ?? "",
+          });
         });
-      })
-      .catch(() => alert("Error loading property"));
-  }, [id, isEdit]);
+    }
+  }, [id, reset]);
 
-  // Submit handler: POST for create, PUT for edit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const p = formData;
-    const body = {
-      title: p.title,
-      description: p.description,
-      price: Number(p.price),
-      location: p.location,
-      lat: p.lat ? Number(p.lat) : undefined,
-      lng: p.lng ? Number(p.lng) : undefined,
-      imageUrls: p.imageUrls.filter(Boolean),
-      videoUrls: p.videoUrls.filter(Boolean),
-      propertyType: p.propertyType,
-      environments: Number(p.environments),
-      environmentsList: p.environmentsList.filter(Boolean),
-      bedrooms: Number(p.bedrooms),
-      bathrooms: Number(p.bathrooms),
-      condition: p.condition,
-      age: p.age,
-      services: p.services,
-      extras: p.extras,
-      measuresList: p.measuresList.filter(Boolean),
+  const onSubmit = async (data: any) => {
+    const payload = {
+      title: data.title,
+      description: data.description,
+      price: Number(data.price),
+      location: data.location,
+      lat: data.lat ? Number(data.lat) : undefined,
+      lng: data.lng ? Number(data.lng) : undefined,
+      imageUrls: data.imageUrls?.filter(Boolean),
+      videoUrls: data.videoUrls.filter(Boolean),
+      propertyType: data.propertyType,
+      operationType: data.operationType,
+      environments: Number(data.environments),
+      environmentsList: data.environmentsList.filter(Boolean),
+      bedrooms: Number(data.bedrooms),
+      bathrooms: Number(data.bathrooms),
+      condition: data.condition,
+      age: data.age,
+      measuresList: data.measuresList.filter(Boolean),
+      services: data.services || [],
+      extras: data.extras || [],
+      floor: data.floor || undefined,
+      apartmentNumber: data.apartmentNumber || undefined,
+      pricePerDay: data.pricePerDay ? Number(data.pricePerDay) : undefined,
+      pricePerWeek: data.pricePerWeek ? Number(data.pricePerWeek) : undefined,
+      pricePerMonth: data.pricePerMonth
+        ? Number(data.pricePerMonth)
+        : undefined,
     };
 
+    setTriedSubmit(false);
+
+    const isEdit = Boolean(id);
+    const url = isEdit
+      ? `http://localhost:3000/api/properties/${id}`
+      : "http://localhost:3000/api/properties";
+
     try {
-      await fetch(
-        isEdit
-          ? `http://localhost:3000/api/properties/${id}`
-          : "http://localhost:3000/api/properties",
-        {
-          method: isEdit ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      );
+      const res = await fetch(url, {
+        method: isEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Error en el servidor");
+      }
+
       navigate("/admin/dashboard");
-    } catch {
-      alert(isEdit ? "Error updating property" : "Error creating property");
+    } catch (err: any) {
+      alert("Error al guardar la propiedad: " + (err.message || err));
     }
   };
 
-  return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">
-        {isEdit ? "Edit Property" : "Create New Property"}
-      </h1>
+  const onError = () => {
+    setTriedSubmit(true);
+  };
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Property Type */}
-        <div>
-          <label className="font-medium block mb-1">Property Type</label>
+  const watchPropertyType = watch("propertyType");
+  const watchOperationType = watch("operationType");
+
+  useEffect(() => {
+    if (watchPropertyType !== "Departamento") {
+      setValue("floor", "");
+      setValue("apartmentNumber", "");
+      clearErrors(["floor", "apartmentNumber"]);
+    }
+    if (watchPropertyType === "Terreno") {
+      setValue("environments", undefined);
+      setValue("bedrooms", undefined);
+      setValue("bathrooms", undefined);
+      clearErrors(["environments", "bedrooms", "bathrooms"]);
+    }
+  }, [watchPropertyType, setValue, clearErrors]);
+
+  useEffect(() => {
+    if (watchOperationType !== "Alquiler temporal") {
+      setValue("temporalPrice", undefined);
+      setValue("priceBy", "");
+      clearErrors(["temporalPrice", "priceBy"]);
+    }
+  }, [watchOperationType, setValue, clearErrors]);
+
+  return (
+    <div className="w-full min-h-screen flex items-start justify-center bg-gray-50 py-12">
+      <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-4">
+        <div className="mb-4">
+          <label htmlFor="title" className="block font-medium mb-1">
+            Título
+          </label>
+          <input
+            {...register("title")}
+            placeholder="Título"
+            className="w-full p-2 border rounded"
+          />
+          {errors.title && (
+            <p className="text-red-500">{errors.title.message}</p>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label htmlFor="´description" className="block font-medium mb-1">
+            Descripción
+          </label>
+          <textarea
+            {...register("description")}
+            placeholder="Descripción"
+            className="w-full p-2 border rounded"
+          />
+          {errors.description && (
+            <p className="text-red-500">{errors.description.message}</p>
+          )}
+        </div>
+
+        <div className="mb-4">
           <select
-            name="propertyType"
-            value={formData.propertyType}
-            onChange={handleChange}
-            required
+            {...register("propertyType")}
             className="w-full p-2 border rounded"
           >
-            <option value="" disabled>
-              Select Type
-            </option>
+            <option value="">Tipo de propiedad</option>
             {PROPERTY_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
           </select>
+          {errors.propertyType && (
+            <p className="text-red-500">{errors.propertyType.message}</p>
+          )}
         </div>
 
-        {/* Title & Description */}
-        <input
-          name="title"
-          placeholder="Title"
-          value={formData.title}
-          onChange={handleChange}
-          required
-          className="w-full p-2 border rounded"
-        />
-        <textarea
-          name="description"
-          placeholder="Description"
-          value={formData.description}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-        />
-
-        {/* Price & Location */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            name="price"
-            type="number"
-            placeholder="Price"
-            value={formData.price}
-            onChange={handleChange}
-            required
-            className="p-2 border rounded"
-          />
-          <input
-            name="location"
-            placeholder="Location"
-            value={formData.location}
-            onChange={handleChange}
-            required
-            className="p-2 border rounded"
-          />
+        <div className="mb-4">
+          <select
+            {...register("operationType")}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Tipo de operación</option>
+            {OPERATION_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          {errors.operationType && (
+            <p className="text-red-500">{errors.operationType.message}</p>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {operationType !== "Alquiler temporal" && (
+          <div className="mb-4">
+            <label htmlFor="price" className="block font-medium mb-1">
+              Precio
+            </label>
+            <input
+              {...register("price")}
+              type="number"
+              placeholder="Precio"
+              className="w-full p-2 border rounded"
+            />
+            {errors.price && (
+              <p className="text-red-500">{errors.price.message}</p>
+            )}
+          </div>
+        )}
+
+        {/* Condicional: solo si es Departamento */}
+        {propertyType === "Departamento" && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="mb-4">
+              <label htmlFor="floor" className="block font-medium mb-1">
+                Piso
+              </label>
+              <input
+                {...register("floor")}
+                placeholder="Piso"
+                className="p-2 border rounded"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor="apartmentNumber"
+                className="block font-medium mb-1"
+              >
+                Depto
+              </label>
+              <input
+                {...register("apartmentNumber")}
+                placeholder="Depto"
+                className="p-2 border rounded"
+              />
+            </div>
+          </div>
+        )}
+        {errors.floor && <p className="text-red-500">{errors.floor.message}</p>}
+        {errors.apartmentNumber && (
+          <p className="text-red-500">{errors.apartmentNumber.message}</p>
+        )}
+
+        {/* Condicional: Alquiler temporal */}
+        {operationType === "Alquiler temporal" && (
+          <div className="grid grid-cols-2 gap-4 items-end">
+            <div>
+              <label htmlFor="temporalPrice" className="block font-medium mb-1">
+                Precio por período
+              </label>
+              <input
+                {...register("temporalPrice")}
+                type="number"
+                placeholder="Precio por período"
+                className="p-2 border rounded w-full"
+              />
+            </div>
+            <div>
+              {/* Label invisible para mantener la alineación */}
+              <label className="block mb-1 invisible select-none">
+                Período
+              </label>
+              <select
+                {...register("priceBy")}
+                className="p-2 border rounded w-full"
+              >
+                <option value="">Período</option>
+                {PRICE_BY.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {errors.temporalPrice && (
+              <p className="text-red-500">{errors.temporalPrice.message}</p>
+            )}
+            {errors.priceBy && (
+              <p className="text-red-500">{errors.priceBy.message}</p>
+            )}
+          </div>
+        )}
+
+        {/* Dormitorios, Baños y Ambientes (opcionales si es Terreno) */}
+        {watchPropertyType !== "Terreno" && (
+          <>
+            <div className="mb-4">
+              <label htmlFor="environments" className="block font-medium mb-1">
+                Ambientes
+              </label>
+              <input
+                {...register("environments")}
+                type="number"
+                placeholder="Ambientes"
+                className="w-full p-2 border rounded"
+              />
+              {errors.environments && (
+                <p className="text-red-500">{errors.environments.message}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="mb-4">
+                <label htmlFor="bedrooms" className="block font-medium mb-1">
+                  Dormitorios
+                </label>
+                <input
+                  {...register("bedrooms")}
+                  type="number"
+                  placeholder="Dormitorios"
+                  className="p-2 border rounded"
+                />
+                {errors.bedrooms && (
+                  <p className="text-red-500">
+                    {errors.bedrooms.message as any}
+                  </p>
+                )}
+              </div>
+              <div className="mb-4">
+                <label htmlFor="bathrooms" className="block font-medium mb-1">
+                  Baños
+                </label>
+                <input
+                  {...register("bathrooms")}
+                  type="number"
+                  placeholder="Baños"
+                  className="p-2 border rounded"
+                />
+                {errors.bathrooms && (
+                  <p className="text-red-500">
+                    {errors.bathrooms.message as any}
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="mb-4">
+          <label htmlFor="location" className="block font-medium mb-1">
+            Ubicación
+          </label>
           <input
-            name="lat"
-            type="number"
-            placeholder="Latitude"
-            value={formData.lat}
-            onChange={handleChange}
-            step="any"
-            min={-90}
-            max={90}
-            className="p-2 border rounded"
+            {...register("location")}
+            placeholder="Ubicación"
+            className="w-full p-2 border rounded"
           />
-          <input
-            name="lng"
-            type="number"
-            placeholder="Longitude"
-            value={formData.lng}
-            onChange={handleChange}
-            step="any"
-            min={-180}
-            max={180}
-            className="p-2 border rounded"
-          />
+          {errors.location && (
+            <p className="text-red-500">{errors.location.message}</p>
+          )}
         </div>
 
-        {/* Superficies y Medidas */}
-        <div>
-          <p className="font-medium mb-2">Superficies y medidas</p>
-          <DynamicList
-            label="Medidas"
-            items={formData.measuresList}
-            onChange={(idx, val) =>
-              updateList("measuresList", "update", idx, val)
-            }
-            onAdd={() => updateList("measuresList", "add")}
-            onRemove={(idx) => updateList("measuresList", "remove", idx)}
-            placeholder="Medida"
-          />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="mb-4">
+            <label htmlFor="lat" className="block font-medium mb-1">
+              Latitud
+            </label>
+            <input
+              {...register("lat")}
+              type="number"
+              placeholder="Latitud"
+              className="p-2 border rounded"
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="lng" className="block font-medium mb-1">
+              Longitud
+            </label>
+            <input
+              {...register("lng")}
+              type="number"
+              placeholder="Longitud"
+              className="p-2 border rounded"
+            />
+          </div>
         </div>
+        {errors.lat && <p className="text-red-500">{errors.lat.message}</p>}
+        {errors.lng && <p className="text-red-500">{errors.lng.message}</p>}
 
-        {/* Número de Ambientes */}
-        <div>
-          <label className="font-medium block mb-1">Ambientes (cantidad)</label>
-          <input
-            type="number"
-            name="environments"
-            placeholder="Ej: 3"
-            value={formData.environments}
-            onChange={handleChange}
-            required
-            className="w-24 p-2 border rounded"
-            min={0}
-          />
-        </div>
-
-        {/* Ambientes */}
-        <div>
-          <DynamicList
-            label="Ambientes"
-            items={formData.environmentsList}
-            onChange={(idx, val) =>
-              updateList("environmentsList", "update", idx, val)
-            }
-            onAdd={() => updateList("environmentsList", "add")}
-            onRemove={(idx) => updateList("environmentsList", "remove", idx)}
-            placeholder="Ambiente"
-          />
-        </div>
-
-        {/* Dormitorios, Baños, Antigüedad y Condición */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            name="bedrooms"
-            type="number"
-            placeholder="Dormitorios"
-            value={formData.bedrooms}
-            onChange={handleChange}
-            required
-            className="p-2 border rounded"
-          />
-          <input
-            name="bathrooms"
-            type="number"
-            placeholder="Baños"
-            value={formData.bathrooms}
-            onChange={handleChange}
-            required
-            className="p-2 border rounded"
-          />
-          <input
-            name="age"
-            placeholder="Antigüedad (e.g. A Estrenar)"
-            value={formData.age}
-            onChange={handleChange}
-            required
-            className="p-2 border rounded"
-          />
-          <input
-            name="condition"
-            placeholder="Condición (e.g. Nuevo)"
-            value={formData.condition}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-
-        {/* Servicios */}
-        <div>
-          <p className="font-medium mb-2">Servicios</p>
-            <FeatureCheckboxGroup
-              options={SERVICES}
-              selected={formData.services}
-              onChange={(selected) =>
-                setFormData((f) => ({ ...f, services: selected }))
+        {/* DynamicList: imágenes, videos, medidas, ambientesList */}
+        <Controller
+          name="imageUrls"
+          control={control}
+          render={({ field }) => (
+            <DynamicList
+              label="Imágenes"
+              items={(field.value ?? [""]).filter(
+                (x): x is string => typeof x === "string"
+              )}
+              onChange={(i, v) =>
+                field.onChange(
+                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                )
+              }
+              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+              onRemove={(i) =>
+                field.onChange(
+                  (field.value ?? [""]).filter((_, ix) => ix !== i)
+                )
+              }
+              errors={
+                errors.imageUrls
+                  ? (errors.imageUrls as any).map((err: any) => err?.message)
+                  : []
               }
             />
-        </div>
+          )}
+        />
 
-        {/* Extras */}
-        <div>
-          <p className="font-medium mb-2">Extras</p>
-            <FeatureCheckboxGroup
-              options={EXTRAS}
-              selected={formData.extras}
-              onChange={(selected) =>
-                setFormData((f) => ({ ...f, extras: selected }))
+        {errors.imageUrls && (
+          <p className="text-red-500">{errors.imageUrls.message as any}</p>
+        )}
+
+        {/* Lo mismo para videoUrls, measuresList, environmentsList si querés */}
+
+        <Controller
+          name="videoUrls"
+          control={control}
+          render={({ field }) => (
+            <DynamicList
+              label="Videos"
+              items={(field.value ?? [""]).filter(
+                (x): x is string => typeof x === "string"
+              )}
+              onChange={(i, v) =>
+                field.onChange(
+                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                )
+              }
+              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+              onRemove={(i) =>
+                field.onChange(
+                  (field.value ?? [""]).filter((_, ix) => ix !== i)
+                )
+              }
+              errors={
+                errors.videoUrls
+                  ? (errors.videoUrls as any).map((err: any) => err?.message)
+                  : []
               }
             />
+          )}
+        />
+
+        {errors.videoUrls && (
+          <p className="text-red-500">{errors.videoUrls.message as any}</p>
+        )}
+
+        <Controller
+          name="measuresList"
+          control={control}
+          render={({ field }) => (
+            <DynamicList
+              label="Medidas"
+              items={(field.value ?? [""]).filter(
+                (x): x is string => typeof x === "string"
+              )}
+              onChange={(i, v) =>
+                field.onChange(
+                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                )
+              }
+              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+              onRemove={(i) =>
+                field.onChange(
+                  (field.value ?? [""]).filter((_, ix) => ix !== i)
+                )
+              }
+              errors={
+                errors.measuresList
+                  ? (errors.measuresList as any).map((err: any) => err?.message)
+                  : []
+              }
+            />
+          )}
+        />
+        {errors.measuresList && (
+          <p className="text-red-500">{errors.measuresList.message as any}</p>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Antigüedad */}
+          <div>
+            <label className="font-medium block mb-1">Antigüedad</label>
+            <input
+              {...register("age")}
+              placeholder="Ej: A Estrenar, 10 años, etc."
+              className="w-full p-2 border rounded"
+            />
+            {errors.age && (
+              <p className="text-red-500 text-sm">
+                {errors.age.message as any}
+              </p>
+            )}
+          </div>
+          {/* Condición */}
+          <div>
+            <label className="font-medium block mb-1">Condición</label>
+            <input
+              {...register("condition")}
+              placeholder="Ej: Nueva, Buen estado, etc."
+              className="w-full p-2 border rounded"
+            />
+            {errors.condition && (
+              <p className="text-red-500 text-sm">
+                {errors.condition.message as any}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* URLs de Imágenes */}
-        <div>
-          <p className="font-medium mb-2">Image URLs</p>
-          {formData.imageUrls.map((url, idx) => (
-            <div key={idx} className="flex items-center gap-2 mb-2">
-              <input
-                name="imageUrls"
-                placeholder={`Image URL ${idx + 1}`}
-                value={url}
-                onChange={(e) =>
-                  updateList("imageUrls", "update", idx, e.target.value)
-                }
-                className="flex-1 p-2 border rounded"
-              />
-              <button
-                type="button"
-                onClick={() => updateList("imageUrls", "remove", idx)}
-                className="px-3 bg-red-500 text-white rounded"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => updateList("imageUrls", "add")}
-            className="text-sm text-blue-600 underline"
-          >
-            + Agregar imagen
-          </button>
-        </div>
+        <Controller
+          name="environmentsList"
+          control={control}
+          render={({ field }) => (
+            <DynamicList
+              label="Ambientes"
+              items={(field.value ?? [""]).filter(
+                (x): x is string => typeof x === "string"
+              )}
+              onChange={(i, v) =>
+                field.onChange(
+                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                )
+              }
+              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+              onRemove={(i) =>
+                field.onChange(
+                  (field.value ?? [""]).filter((_, ix) => ix !== i)
+                )
+              }
+              errors={
+                errors.environmentsList
+                  ? (errors.environmentsList as any).map(
+                      (err: any) => err?.message
+                    )
+                  : []
+              }
+            />
+          )}
+        />
+        {errors.environmentsList && (
+          <p className="text-red-500">
+            {errors.environmentsList.message as any}
+          </p>
+        )}
 
-        {/* URLs de Vídeos */}
-        <div>
-          <p className="font-medium mb-2">Video URLs</p>
-          {formData.videoUrls.map((url, idx) => (
-            <div key={idx} className="flex items-center gap-2 mb-2">
-              <input
-                name="videoUrls"
-                placeholder={`Video URL ${idx + 1}`}
-                value={url}
-                onChange={(e) =>
-                  updateList("videoUrls", "update", idx, e.target.value)
-                }
-                className="flex-1 p-2 border rounded"
+        {/* CheckboxGroup para features */}
+        <div className="mb-4">
+          <label htmlFor="services" className="block font-medium mb-1">
+            Servicios
+          </label>
+          <Controller
+            name="services"
+            control={control}
+            render={({ field }) => (
+              <FeatureCheckboxGroup
+                options={SERVICES}
+                selected={(field.value ?? []).filter(
+                  (x): x is string => typeof x === "string"
+                )}
+                onChange={field.onChange}
               />
-              <button
-                type="button"
-                onClick={() => updateList("videoUrls", "remove", idx)}
-                className="px-3 bg-red-500 text-white rounded"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => updateList("videoUrls", "add")}
-            className="text-sm text-blue-600 underline"
-          >
-            + Agregar vídeo
-          </button>
+            )}
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="extras" className="block font-medium mb-1">
+            Extras
+          </label>
+          <Controller
+            name="extras"
+            control={control}
+            render={({ field }) => (
+              <FeatureCheckboxGroup
+                options={EXTRAS}
+                selected={(field.value ?? []).filter(
+                  (x): x is string => typeof x === "string"
+                )}
+                onChange={field.onChange}
+              />
+            )}
+          />
         </div>
 
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded"
         >
-          {isEdit ? "Update Property" : "Create Property"}
+          Guardar propiedad
         </button>
+
+        {triedSubmit && !isValid && (
+          <p className="mt-2 text-red-600 text-sm text-center font-semibold">
+            Complete los campos obligatorios.
+          </p>
+        )}
       </form>
     </div>
   );
