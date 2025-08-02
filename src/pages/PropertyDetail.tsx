@@ -73,15 +73,21 @@ export default function PropertyDetail() {
         <div>
           <strong>Tipo:</strong> {property.propertyType}
         </div>
-        <div>
-          <strong>Ambientes:</strong> {property.environments}
-        </div>
-        <div>
-          <strong>Dormitorios:</strong> {property.bedrooms}
-        </div>
-        <div>
-          <strong>Baños:</strong> {property.bathrooms}
-        </div>
+        {property.environments != null && property.environments !== 0 && (
+          <div>
+            <strong>Ambientes:</strong> {property.environments}
+          </div>
+        )}
+        {property.bedrooms != null && property.bedrooms !== 0 && (
+          <div>
+            <strong>Dormitorios:</strong> {property.bedrooms}
+          </div>
+        )}
+        {property.bathrooms != null && property.bathrooms !== 0 && (
+          <div>
+            <strong>Baños:</strong> {property.bathrooms}
+          </div>
+        )}
         <div>
           <strong>Condición:</strong> {property.condition}
         </div>
@@ -126,31 +132,33 @@ export default function PropertyDetail() {
       </div>
 
       {/* Superficies y medidas */}
-      {property.measuresList?.length > 0 && property.measuresList.some(Boolean) && (
-        <div>
-          <h2 className="text-xl font-bold mb-2">Superficies y Medidas</h2>
-          <ul className="list-disc list-inside">
-            {property.measuresList.filter(Boolean).map((m, i) => (
-              <li key={i}>{m}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {property.measuresList?.length > 0 &&
+        property.measuresList.some(Boolean) && (
+          <div>
+            <h2 className="text-xl font-bold mb-2">Superficies y Medidas</h2>
+            <ul className="list-disc list-inside">
+              {property.measuresList.filter(Boolean).map((m, i) => (
+                <li key={i}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
       {/* Ambientes detallados */}
-      {property.environmentsList?.length > 0 && property.environmentsList.some(Boolean) && (
-        <section>
-          <h2 className="text-xl font-bold mb-2">Ambientes</h2>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 list-none">
-            {property.environmentsList.filter(Boolean).map((amb, i) => (
-              <li key={i} className="flex items-center">
-                <Check className="w-4 h-4 text-green-600 mr-2" />
-                {amb}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {property.environmentsList?.length > 0 &&
+        property.environmentsList.some(Boolean) && (
+          <section>
+            <h2 className="text-xl font-bold mb-2">Ambientes</h2>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 list-none">
+              {property.environmentsList.filter(Boolean).map((amb, i) => (
+                <li key={i} className="flex items-center">
+                  <Check className="w-4 h-4 text-green-600 mr-2" />
+                  {amb}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
       {/* Servicios */}
       {property.services?.length > 0 && property.services.some(Boolean) && (
@@ -194,14 +202,20 @@ export default function PropertyDetail() {
             <>
               <button
                 onClick={() =>
-                  setImgIdx((i) => (i - 1 + property.imageUrls.length) % property.imageUrls.length)
+                  setImgIdx(
+                    (i) =>
+                      (i - 1 + property.imageUrls.length) %
+                      property.imageUrls.length
+                  )
                 }
                 className="absolute left-0 top-1/2 bg-black bg-opacity-50 text-white p-2 rounded-r"
               >
                 ‹
               </button>
               <button
-                onClick={() => setImgIdx((i) => (i + 1) % property.imageUrls.length)}
+                onClick={() =>
+                  setImgIdx((i) => (i + 1) % property.imageUrls.length)
+                }
                 className="absolute right-0 top-1/2 bg-black bg-opacity-50 text-white p-2 rounded-l"
               >
                 ›
@@ -215,7 +229,11 @@ export default function PropertyDetail() {
       {property.videoUrls?.map(
         (url, i) =>
           url && (
-            <video key={i} controls className="w-full max-w-3xl mx-auto rounded my-4">
+            <video
+              key={i}
+              controls
+              className="w-full max-w-3xl mx-auto rounded my-4"
+            >
               <source src={url} type="video/mp4" />
               Tu navegador no soporta videos.
             </video>
@@ -233,7 +251,8 @@ export default function PropertyDetail() {
             <Marker
               position={pos}
               icon={L.icon({
-                iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+                iconUrl:
+                  "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
                 iconAnchor: [12, 41],
               })}
             >
@@ -247,15 +266,28 @@ export default function PropertyDetail() {
       <div className="max-w-xl mx-auto mt-12">
         <h2 className="text-2xl font-bold mb-4">Contacto</h2>
         <form className="space-y-4">
-          <input type="text" placeholder="Tu nombre" required className="w-full p-2 border rounded" />
-          <input type="email" placeholder="Tu email" required className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            placeholder="Tu nombre"
+            required
+            className="w-full p-2 border rounded"
+          />
+          <input
+            type="email"
+            placeholder="Tu email"
+            required
+            className="w-full p-2 border rounded"
+          />
           <textarea
             rows={5}
             required
             className="w-full p-2 border rounded"
             defaultValue={`REF. ${property.ref} - ${property.title}`}
           />
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded"
+          >
             Enviar
           </button>
         </form>

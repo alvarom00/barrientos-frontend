@@ -287,51 +287,58 @@ export default function PropertyFormRH() {
                 className="p-2 border rounded"
               />
             </div>
+            {errors.floor && (
+              <p className="text-red-500">{errors.floor.message}</p>
+            )}
+            {errors.apartmentNumber && (
+              <p className="text-red-500">{errors.apartmentNumber.message}</p>
+            )}
           </div>
-        )}
-        {errors.floor && <p className="text-red-500">{errors.floor.message}</p>}
-        {errors.apartmentNumber && (
-          <p className="text-red-500">{errors.apartmentNumber.message}</p>
         )}
 
         {/* Condicional: Alquiler temporal */}
         {operationType === "Alquiler temporal" && (
           <div className="grid grid-cols-2 gap-4 items-end">
+            {/* Precio por período */}
             <div>
-              <label htmlFor="temporalPrice" className="block font-medium mb-1">
-                Precio por período
-              </label>
-              <input
-                {...register("temporalPrice")}
-                type="number"
-                placeholder="Precio por período"
-                className="p-2 border rounded w-full"
-              />
+              <div>
+                <label
+                  htmlFor="temporalPrice"
+                  className="block font-medium mb-1"
+                >
+                  Precio por período
+                </label>
+                <input
+                  {...register("temporalPrice")}
+                  type="number"
+                  placeholder="Precio por período"
+                  className="p-2 border rounded w-full"
+                />
+                <p className="text-red-500 min-h-[1.5em]">
+                  {errors.temporalPrice?.message ?? ""}
+                </p>
+              </div>
             </div>
+            {/* Select de período */}
             <div>
-              {/* Label invisible para mantener la alineación */}
-              <label className="block mb-1 invisible select-none">
-                Período
-              </label>
-              <select
-                {...register("priceBy")}
-                className="p-2 border rounded w-full"
-              >
-                <option value="">Período</option>
-                {PRICE_BY.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block font-medium mb-1">Período</label>
+                <select
+                  {...register("priceBy")}
+                  className="p-2 border rounded w-full"
+                >
+                  <option value="">Período</option>
+                  {PRICE_BY.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-red-500 min-h-[1.5em]">
+                  {errors.priceBy?.message ?? ""}
+                </p>
+              </div>
             </div>
-
-            {errors.temporalPrice && (
-              <p className="text-red-500">{errors.temporalPrice.message}</p>
-            )}
-            {errors.priceBy && (
-              <p className="text-red-500">{errors.priceBy.message}</p>
-            )}
           </div>
         )}
 
@@ -412,8 +419,11 @@ export default function PropertyFormRH() {
               {...register("lat")}
               type="number"
               placeholder="Latitud"
-              className="p-2 border rounded"
+              className="p-2 border rounded w-full"
             />
+            <p className="text-red-500 min-h-[1.5em]">
+              {errors.lat?.message ?? ""}
+            </p>
           </div>
           <div className="mb-4">
             <label htmlFor="lng" className="block font-medium mb-1">
@@ -423,113 +433,132 @@ export default function PropertyFormRH() {
               {...register("lng")}
               type="number"
               placeholder="Longitud"
-              className="p-2 border rounded"
+              className="p-2 border rounded w-full"
             />
+            <p className="text-red-500 min-h-[1.5em]">
+              {errors.lng?.message ?? ""}
+            </p>
           </div>
         </div>
-        {errors.lat && <p className="text-red-500">{errors.lat.message}</p>}
-        {errors.lng && <p className="text-red-500">{errors.lng.message}</p>}
 
         {/* DynamicList: imágenes, videos, medidas, ambientesList */}
         <Controller
           name="imageUrls"
           control={control}
           render={({ field }) => (
-            <DynamicList
-              label="Imágenes"
-              items={(field.value ?? [""]).filter(
-                (x): x is string => typeof x === "string"
+            <>
+              <DynamicList
+                label="Imágenes"
+                items={(field.value ?? [""]).filter(
+                  (x): x is string => typeof x === "string"
+                )}
+                onChange={(i, v) =>
+                  field.onChange(
+                    (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                  )
+                }
+                onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+                onRemove={(i) =>
+                  field.onChange(
+                    (field.value ?? [""]).filter((_, ix) => ix !== i)
+                  )
+                }
+              />
+              {/* Error general del array */}
+              {errors.imageUrls?.message && (
+                <p className="text-red-500">{errors.imageUrls.message}</p>
               )}
-              onChange={(i, v) =>
-                field.onChange(
-                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                )
-              }
-              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-              onRemove={(i) =>
-                field.onChange(
-                  (field.value ?? [""]).filter((_, ix) => ix !== i)
-                )
-              }
-              errors={
-                errors.imageUrls
-                  ? (errors.imageUrls as any).map((err: any) => err?.message)
-                  : []
-              }
-            />
+              {/* Errores por cada elemento */}
+              {Array.isArray(errors.imageUrls) &&
+                errors.imageUrls.map(
+                  (err, i) =>
+                    err && (
+                      <p key={i} className="text-red-500">
+                        Video {i + 1}: {err?.message}
+                      </p>
+                    )
+                )}
+            </>
           )}
         />
-
-        {errors.imageUrls && (
-          <p className="text-red-500">{errors.imageUrls.message as any}</p>
-        )}
-
-        {/* Lo mismo para videoUrls, measuresList, environmentsList si querés */}
 
         <Controller
           name="videoUrls"
           control={control}
           render={({ field }) => (
-            <DynamicList
-              label="Videos"
-              items={(field.value ?? [""]).filter(
-                (x): x is string => typeof x === "string"
+            <>
+              <DynamicList
+                label="Videos"
+                items={field.value ?? [""]}
+                onChange={(i, v) =>
+                  field.onChange(
+                    (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                  )
+                }
+                onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+                onRemove={(i) =>
+                  field.onChange(
+                    (field.value ?? [""]).filter((_, ix) => ix !== i)
+                  )
+                }
+              />
+              {/* Error general del array */}
+              {errors.videoUrls?.message && (
+                <p className="text-red-500">{errors.videoUrls.message}</p>
               )}
-              onChange={(i, v) =>
-                field.onChange(
-                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                )
-              }
-              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-              onRemove={(i) =>
-                field.onChange(
-                  (field.value ?? [""]).filter((_, ix) => ix !== i)
-                )
-              }
-              errors={
-                errors.videoUrls
-                  ? (errors.videoUrls as any).map((err: any) => err?.message)
-                  : []
-              }
-            />
+              {/* Errores por cada elemento */}
+              {Array.isArray(errors.videoUrls) &&
+                errors.videoUrls.map(
+                  (err, i) =>
+                    err && (
+                      <p key={i} className="text-red-500">
+                        Video {i + 1}: {err?.message}
+                      </p>
+                    )
+                )}
+            </>
           )}
         />
-
-        {errors.videoUrls && (
-          <p className="text-red-500">{errors.videoUrls.message as any}</p>
-        )}
 
         <Controller
           name="measuresList"
           control={control}
           render={({ field }) => (
-            <DynamicList
-              label="Medidas"
-              items={(field.value ?? [""]).filter(
-                (x): x is string => typeof x === "string"
+            <>
+              <DynamicList
+                label="Medidas"
+                items={(field.value ?? [""]).filter(
+                  (x): x is string => typeof x === "string"
+                )}
+                onChange={(i, v) =>
+                  field.onChange(
+                    (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                  )
+                }
+                onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+                onRemove={(i) =>
+                  field.onChange(
+                    (field.value ?? [""]).filter((_, ix) => ix !== i)
+                  )
+                }
+              />
+              {/* Error general del array */}
+              {errors.measuresList?.message && (
+                <p className="text-red-500">{errors.measuresList.message}</p>
               )}
-              onChange={(i, v) =>
-                field.onChange(
-                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                )
-              }
-              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-              onRemove={(i) =>
-                field.onChange(
-                  (field.value ?? [""]).filter((_, ix) => ix !== i)
-                )
-              }
-              errors={
-                errors.measuresList
-                  ? (errors.measuresList as any).map((err: any) => err?.message)
-                  : []
-              }
-            />
+              {/* Errores por cada elemento */}
+              {Array.isArray(errors.measuresList) &&
+                errors.measuresList.map(
+                  (err, i) =>
+                    err && (
+                      <p key={i} className="text-red-500">
+                        Medida {i + 1}: {err?.message}
+                      </p>
+                    )
+                )}
+            </>
           )}
         />
-        {errors.measuresList && (
-          <p className="text-red-500">{errors.measuresList.message as any}</p>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Antigüedad */}
@@ -566,37 +595,43 @@ export default function PropertyFormRH() {
           name="environmentsList"
           control={control}
           render={({ field }) => (
-            <DynamicList
-              label="Ambientes"
-              items={(field.value ?? [""]).filter(
-                (x): x is string => typeof x === "string"
+            <>
+              <DynamicList
+                label="Ambientes"
+                items={(field.value ?? [""]).filter(
+                  (x): x is string => typeof x === "string"
+                )}
+                onChange={(i, v) =>
+                  field.onChange(
+                    (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
+                  )
+                }
+                onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
+                onRemove={(i) =>
+                  field.onChange(
+                    (field.value ?? [""]).filter((_, ix) => ix !== i)
+                  )
+                }
+              />
+              {/* Error general del array */}
+              {errors.environmentsList?.message && (
+                <p className="text-red-500">
+                  {errors.environmentsList.message}
+                </p>
               )}
-              onChange={(i, v) =>
-                field.onChange(
-                  (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                )
-              }
-              onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-              onRemove={(i) =>
-                field.onChange(
-                  (field.value ?? [""]).filter((_, ix) => ix !== i)
-                )
-              }
-              errors={
-                errors.environmentsList
-                  ? (errors.environmentsList as any).map(
-                      (err: any) => err?.message
+              {/* Errores por cada elemento */}
+              {Array.isArray(errors.environmentsList) &&
+                errors.environmentsList.map(
+                  (err, i) =>
+                    err && (
+                      <p key={i} className="text-red-500">
+                        Ambientes {i + 1}: {err?.message}
+                      </p>
                     )
-                  : []
-              }
-            />
+                )}
+            </>
           )}
         />
-        {errors.environmentsList && (
-          <p className="text-red-500">
-            {errors.environmentsList.message as any}
-          </p>
-        )}
 
         {/* CheckboxGroup para features */}
         <div className="mb-4">
