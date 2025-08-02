@@ -6,6 +6,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PropertyForm from "./pages/PropertyForm";
 import SiteLayout from "./components/SiteLayout";
+import ErrorPage from "./pages/ErrorPage";
 
 function App() {
   return (
@@ -42,6 +43,17 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/error500"
+            element={
+              <ErrorPage
+                code={500}
+                title="Error del servidor"
+                message="Ocurrió un error inesperado. Intente más tarde."
+              />
+            }
+          />
+          <Route path="*" element={<ErrorPage />} />
         </Route>
         {/* Login fuera del layout */}
         <Route path="/admin/login" element={<Login />} />

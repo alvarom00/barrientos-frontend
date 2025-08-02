@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import PropertyCard from "../components/PropertyCard";
 import type { IProperty } from "../components/PropertyCard";
+import PropertySearchBar from "../components/PropertySearchBar";
 
-interface Property {
-  _id: string;
-  title: string;
-  price: number;
-  location: string;
-  imageUrls: string[];
-}
+export type SearchFilters = {
+  operationType?: string;
+  propertyType?: string;
+  query?: string;
+};
 
 const toFullProperty = (p: any): IProperty => ({
   _id: p._id,
@@ -40,21 +39,37 @@ const toFullProperty = (p: any): IProperty => ({
 });
 
 const Home = () => {
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [filteredProperties, setFilteredProperties] = useState<
+    IProperty[] | null
+  >(null);
 
+  const handleSearch = async ({ operationType, propertyType, query }: SearchFilters) => {
+    // Armá los params dinámicos
+    const params = new URLSearchParams();
+    if (operationType) params.append("operationType", operationType);
+    if (propertyType) params.append("propertyType", propertyType);
+    if (query) params.append("query", query);
+
+    const res = await fetch(`http://localhost:3000/api/properties?${params}`);
+    const data = await res.json();
+    setFilteredProperties(data);
+  };
+
+  // Al principio (cuando no hay filtro, mostrá todo):
   useEffect(() => {
     fetch("http://localhost:3000/api/properties")
       .then((res) => res.json())
-      .then((data) => setProperties(data))
+      .then((data) => setFilteredProperties(data))
       .catch((err) => console.error("Error fetching properties:", err));
   }, []);
 
   return (
     <div className="p-8">
+      <PropertySearchBar onSearch={handleSearch} />
       <h1 className="text-3xl font-bold mb-6">Available Properties</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {properties.map((p) => (
+        {(filteredProperties ?? []).map((p) => (
           <PropertyCard key={p._id} property={toFullProperty(p)} />
         ))}
       </div>
