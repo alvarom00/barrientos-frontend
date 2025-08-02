@@ -19,7 +19,9 @@ const AdminDashboard = () => {
   }, []);
 
   const handleDelete = async (id: string) => {
-    const confirm = window.confirm("Are you sure you want to delete this property?");
+    const confirm = window.confirm(
+      "Are you sure you want to delete this property?"
+    );
     if (!confirm) return;
 
     try {
@@ -42,39 +44,49 @@ const AdminDashboard = () => {
         + Create New Property
       </Link>
 
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2">Title</th>
-            <th className="border p-2">Price</th>
-            <th className="border p-2">Location</th>
-            <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {properties.map((property) => (
-            <tr key={property._id}>
-              <td className="border p-2">{property.title}</td>
-              <td className="border p-2">${property.price}</td>
-              <td className="border p-2">{property.location}</td>
-              <td className="border p-2 flex gap-2">
-                <Link
-                  to={`/admin/edit/${property._id}`}
-                  className="bg-blue-500 text-white px-2 py-1 rounded"
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={() => handleDelete(property._id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
-                >
-                  Delete
-                </button>
-              </td>
+      <div className="overflow-x-auto w-full">
+        <table className="min-w-full w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-200 dark:bg-[#202040]">
+              <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+                Title
+              </th>
+              <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+                Price
+              </th>
+              <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+                Location
+              </th>
+              <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {properties.map((property) => (
+              <tr key={property._id}>
+                <td className="border p-2">{property.title}</td>
+                <td className="border p-2">${property.price}</td>
+                <td className="border p-2">{property.location}</td>
+                <td className="border p-2 flex gap-2">
+                  <Link
+                    to={`/admin/edit/${property._id}`}
+                    className="bg-blue-500 text-white px-2 py-1 rounded"
+                  >
+                    Edit
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(property._id)}
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
