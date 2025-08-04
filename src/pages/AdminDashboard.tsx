@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 interface Property {
   _id: string;
   title: string;
-  price: number;
+  price?: number;
+  operationType: string;
   location: string;
 }
 
@@ -66,7 +67,14 @@ const AdminDashboard = () => {
             {properties.map((property) => (
               <tr key={property._id}>
                 <td className="border p-2">{property.title}</td>
-                <td className="border p-2">${property.price}</td>
+                <td className="border p-2">
+                  {property.operationType === "Arrendamiento"
+                    ? "A acordar"
+                    : property.price
+                    ? `$${property.price.toLocaleString()}`
+                    : "Sin precio"}
+                </td>
+
                 <td className="border p-2">{property.location}</td>
                 <td className="border p-2 flex gap-2">
                   <Link

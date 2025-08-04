@@ -15,6 +15,7 @@ const toFullProperty = (p: any): IProperty => ({
   title: p.title ?? "",
   description: p.description ?? "",
   price: p.price ?? 0,
+  measure: p.measure ?? "",
   location: p.location ?? "",
   lat: p.lat,
   lng: p.lng,
@@ -27,15 +28,10 @@ const toFullProperty = (p: any): IProperty => ({
   bathrooms: p.bathrooms ?? 0,
   condition: p.condition ?? "",
   age: p.age ?? "",
-  measuresList: p.measuresList ?? [],
+  houseMeasures: p.houseMeasures ?? "",
   environmentsList: p.environmentsList ?? [],
   services: p.services ?? [],
   extras: p.extras ?? [],
-  floor: p.floor,
-  apartmentNumber: p.apartmentNumber,
-  pricePerDay: p.pricePerDay,
-  pricePerWeek: p.pricePerWeek,
-  pricePerMonth: p.pricePerMonth,
 });
 
 const Home = () => {

@@ -1,4 +1,3 @@
-// schema/propertySchema.ts
 import * as yup from "yup";
 
 export const propertySchema = yup.object({
@@ -12,22 +11,96 @@ export const propertySchema = yup.object({
     .min(10, "Muy corto")
     .max(2000, "Demasiado largo")
     .required("Descripción requerida"),
-  price: yup
-    .number()
-    .typeError("Debe ser un número")
-    .required("Precio requerido"),
-  propertyType: yup.string().required("Tipo requerido"),
+  price: yup.number().when("operationType", {
+    is: (val: string) => val !== "Arrendamiento",
+    then: (s) => s.typeError("Debe ser un número").required("Precio requerido"),
+    otherwise: (s) => s.notRequired(),
+  }),
   operationType: yup.string().required("Operación requerida"),
-  environments: yup.number().when("propertyType", {
-    is: (val: string) => val !== "Terreno",
+
+  // Solo requeridos si hay "Vivienda" en extras:
+  environments: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) =>
+      originalValue === "" || originalValue === undefined ? null : value
+    )
+    .when("extras", {
+      is: (extras: string[] = []) => extras.includes("Vivienda"),
+      then: (s) =>
+        s
+          .typeError("Debe ser número")
+          .min(1, "Mínimo 1 ambiente")
+          .required("Ambientes requeridos"),
+      otherwise: (s) => s.notRequired().nullable(),
+    }),
+
+  environmentsList: yup
+    .array()
+    .of(
+      yup
+        .string()
+        .min(2, "Cada ambiente debe tener al menos 2 caracteres.")
+        .required("El ambiente es obligatorio.")
+    )
+    .min(1, "Debes agregar al menos un ambiente.")
+    .when("extras", {
+      is: (extras: string[] = []) => extras.includes("Vivienda"),
+      then: (s) => s.required("La lista de ambientes es obligatoria."),
+      otherwise: (s) => s.notRequired(),
+    }),
+  bedrooms: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) =>
+      originalValue === "" || originalValue === undefined ? null : value
+    )
+    .when("extras", {
+      is: (extras: string[] = []) => extras.includes("Vivienda"),
+      then: (s) =>
+        s
+          .typeError("Debe ser número")
+          .min(1, "Mínimo 1 dormitorio")
+          .required("Dormitorios requeridos"),
+      otherwise: (s) => s.notRequired().nullable(),
+    }),
+
+  bathrooms: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) =>
+      originalValue === "" || originalValue === undefined ? null : value
+    )
+    .when("extras", {
+      is: (extras: string[] = []) => extras.includes("Vivienda"),
+      then: (s) =>
+        s
+          .typeError("Debe ser número")
+          .min(1, "Mínimo 1 baño")
+          .required("Baños requeridos"),
+      otherwise: (s) => s.notRequired().nullable(),
+    }),
+
+  condition: yup.string().when("extras", {
+    is: (extras: string[] = []) => extras.includes("Vivienda"),
     then: (s) =>
       s
-        .typeError("Debe ser número")
-        .min(1, "Mínimo 1 ambiente")
-        .required("Ambientes requeridos"),
+        .min(2, "Campo requerido")
+        .max(40, "Demasiado largo")
+        .required("Condición requerida"),
+    otherwise: (s) => s.notRequired(),
+  }),
+  age: yup.string().when("extras", {
+    is: (extras: string[] = []) => extras.includes("Vivienda"),
+    then: (s) =>
+      s
+        .min(1, "Campo requerido")
+        .max(40, "Demasiado largo")
+        .required("Antigüedad requerida"),
     otherwise: (s) => s.notRequired(),
   }),
 
+  // Campos siempre requeridos
   location: yup.string().required("Ubicación requerida"),
   lat: yup
     .number()
@@ -41,65 +114,6 @@ export const propertySchema = yup.object({
     .min(-180, "La longitud mínima es -180.")
     .max(180, "La longitud máxima es 180.")
     .required("La longitud es obligatoria"),
-
-  // Campos agregados
-  age: yup
-    .string()
-    .min(1, "Campo requerido")
-    .max(40, "Demasiado largo")
-    .required("Antigüedad requerida"),
-  condition: yup
-    .string()
-    .min(2, "Campo requerido")
-    .max(40, "Demasiado largo")
-    .required("Condición requerida"),
-
-  // Condicional: solo si es Departamento
-  floor: yup.string().when("propertyType", {
-    is: "Departamento",
-    then: (s) => s.required("Piso requerido"),
-    otherwise: (s) => s.notRequired(),
-  }),
-  apartmentNumber: yup.string().when("propertyType", {
-    is: "Departamento",
-    then: (s) => s.required("Número de depto requerido"),
-    otherwise: (s) => s.notRequired(),
-  }),
-
-  // Condicional: solo si es Alquiler temporal
-  temporalPrice: yup.number().when("operationType", {
-    is: "Alquiler temporal",
-    then: (s) =>
-      s
-        .typeError("El precio por período debe ser un número válido.")
-        .required("El precio por período es obligatorio."),
-    otherwise: (s) => s.notRequired(),
-  }),
-  priceBy: yup.string().when("operationType", {
-    is: "Alquiler temporal",
-    then: (s) => s.required("Requerido"),
-    otherwise: (s) => s.notRequired(),
-  }),
-
-  // Dormitorios/baños no obligatorios en Terreno
-  bedrooms: yup.number().when("propertyType", {
-    is: (val: string) => val !== "Terreno",
-    then: (s) =>
-      s
-        .typeError("La cantidad de dormitorios debe ser un número.")
-        .min(0, "La cantidad mínima de dormitorios es 0.")
-        .required("La cantidad de dormitorios es obligatoria."),
-    otherwise: (s) => s.notRequired(),
-  }),
-  bathrooms: yup.number().when("propertyType", {
-    is: (val: string) => val !== "Terreno",
-    then: (s) =>
-      s
-        .typeError("La cantidad de baños debe ser un número.")
-        .min(0, "La cantidad mínima de baños es 0.")
-        .required("La cantidad de baños es obligatoria."),
-    otherwise: (s) => s.notRequired(),
-  }),
 
   // Arrays para imágenes y features
   imageUrls: yup
@@ -123,27 +137,21 @@ export const propertySchema = yup.object({
     )
     .nullable(),
 
-  measuresList: yup
-    .array()
-    .of(
-      yup
-        .string()
-        .min(2, "Cada medida debe tener al menos 2 caracteres.")
-        .required("La medida es obligatoria.")
-    )
-    .min(1, "Debes agregar al menos una medida.")
-    .required("La lista de medidas es obligatoria."),
-
-  environmentsList: yup
-    .array()
-    .of(
-      yup
-        .string()
-        .min(2, "Cada ambiente debe tener al menos 2 caracteres.")
-        .required("El ambiente es obligatorio.")
-    )
-    .min(1, "Debes agregar al menos un ambiente.")
-    .required("La lista de ambientes es obligatoria."),
+  houseMeasures: yup.number().when("extras", {
+    is: (extras: string[] = []) => extras.includes("Vivienda"),
+    then: (s) =>
+      s
+        .typeError("La medida debe ser un número")
+        .min(1, "La medida debe ser mayor a cero")
+        .required("La medida es obligatoria"),
+    otherwise: (s) => s.notRequired(),
+  }),
+  measure: yup
+  .number()
+  .typeError("Debes ingresar un número válido para las hectáreas.")
+  .positive("El número debe ser mayor a 0.")
+  .required("Las hectáreas son obligatorias."),
+  
   services: yup.array().of(yup.string()),
-  extras: yup.array().of(yup.string()),
+  extras: yup.array().of(yup.string()).default([]),
 });

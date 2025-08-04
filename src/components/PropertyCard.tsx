@@ -5,7 +5,8 @@ export interface IProperty {
   ref: string;
   title: string;
   description?: string;
-  price: number;
+  price?: number;
+  measure: number;
   location: string;
   lat?: number;
   lng?: number;
@@ -18,15 +19,10 @@ export interface IProperty {
   bathrooms: number;
   condition: string;
   age: string;
-  measuresList: string[];
+  houseMeasures: string[];
   environmentsList: string[];
   services: string[];
   extras: string[];
-  floor?: string;
-  apartmentNumber?: string;
-  pricePerDay?: number;
-  pricePerWeek?: number;
-  pricePerMonth?: number;
 }
 
 export default function PropertyCard({ property }: { property: IProperty }) {
@@ -49,7 +45,11 @@ export default function PropertyCard({ property }: { property: IProperty }) {
           {property.location}
         </p>
         <p className="text-green-600 font-semibold mt-2">
-          ${property.price?.toLocaleString()}
+          {property.operationType === "Arrendamiento"
+            ? "Precio a acordar"
+            : property.price
+            ? `$${property.price.toLocaleString()}`
+            : "Sin precio"}
         </p>
       </div>
     </Link>

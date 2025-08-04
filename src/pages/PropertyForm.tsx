@@ -10,19 +10,7 @@ import {
 } from "../components/CustomInputs";
 import { useEffect, useState } from "react";
 
-const PROPERTY_TYPES = [
-  "Departamento",
-  "Local",
-  "Campo",
-  "Finca",
-  "Cochera",
-  "Casa",
-  "Terreno",
-  "Galpón",
-  "Quinta",
-];
-const OPERATION_TYPES = ["Venta", "Alquiler", "Alquiler temporal"];
-const PRICE_BY = ["día", "semana", "mes"];
+const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 
 export default function PropertyFormRH() {
   const {
@@ -30,9 +18,10 @@ export default function PropertyFormRH() {
     control,
     handleSubmit,
     watch,
-    reset,
     setValue,
+    getValues,
     clearErrors,
+    reset,
     formState: { errors, isValid },
   } = useForm({
     resolver: yupResolver(propertySchema),
@@ -43,8 +32,9 @@ export default function PropertyFormRH() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
-  const propertyType = watch("propertyType");
   const operationType = watch("operationType");
+  const extras = watch("extras") ?? [];
+  const hasVivienda = extras.includes("Vivienda");
   const [triedSubmit, setTriedSubmit] = useState(false);
 
   useEffect(() => {
@@ -54,17 +44,22 @@ export default function PropertyFormRH() {
         .then((data) => {
           reset({
             ...data,
-            price: data.price?.toString() ?? "",
-            environments: data.environments?.toString() ?? "",
-            bedrooms: data.bedrooms?.toString() ?? "",
-            bathrooms: data.bathrooms?.toString() ?? "",
-            lat: data.lat?.toString() ?? "",
-            lng: data.lng?.toString() ?? "",
-            floor: data.floor?.toString() ?? "",
-            apartmentNumber: data.apartmentNumber?.toString() ?? "",
-            pricePerDay: data.pricePerDay?.toString() ?? "",
-            pricePerWeek: data.pricePerWeek?.toString() ?? "",
-            pricePerMonth: data.pricePerMonth?.toString() ?? "",
+            price: data.price?.toString() ?? undefined,
+            measure: data.measure.toString() ?? undefined,
+            environments:
+              data.extras?.includes("Vivienda") && data.environments != null
+                ? data.environments.toString()
+                : undefined,
+            bedrooms:
+              data.extras?.includes("Vivienda") && data.bedrooms != null
+                ? data.bedrooms.toString()
+                : undefined,
+            bathrooms:
+              data.extras?.includes("Vivienda") && data.bathrooms != null
+                ? data.bathrooms.toString()
+                : undefined,
+            lat: data.lat?.toString() ?? undefined,
+            lng: data.lng?.toString() ?? undefined,
             imageUrls:
               Array.isArray(data.imageUrls) && data.imageUrls.length
                 ? data.imageUrls
@@ -73,20 +68,27 @@ export default function PropertyFormRH() {
               Array.isArray(data.videoUrls) && data.videoUrls.length
                 ? data.videoUrls
                 : [""],
-            measuresList:
-              Array.isArray(data.measuresList) && data.measuresList.length
-                ? data.measuresList
-                : [""],
+            houseMeasures:
+              data.extras?.includes("Vivienda") && data.houseMeasures != null
+                ? data.houseMeasures
+                : undefined,
             environmentsList:
+              data.extras?.includes("Vivienda") &&
               Array.isArray(data.environmentsList) &&
               data.environmentsList.length
                 ? data.environmentsList
-                : [""],
+                : undefined,
+
             services: Array.isArray(data.services) ? data.services : [],
             extras: Array.isArray(data.extras) ? data.extras : [],
-            condition: data.condition ?? "",
-            age: data.age ?? "",
-            propertyType: data.propertyType ?? "",
+            condition:
+              data.extras?.includes("Vivienda") && data.condition
+                ? data.condition
+                : undefined,
+            age:
+              data.extras?.includes("Vivienda") && data.age
+                ? data.age
+                : undefined,
             operationType: data.operationType ?? "",
             location: data.location ?? "",
             title: data.title ?? "",
@@ -96,34 +98,61 @@ export default function PropertyFormRH() {
     }
   }, [id, reset]);
 
+  useEffect(() => {
+    if (!hasVivienda) {
+      setValue("environments", undefined);
+      setValue("environmentsList", undefined);
+      setValue("bedrooms", undefined);
+      setValue("bathrooms", undefined);
+      setValue("condition", undefined);
+      setValue("age", undefined);
+      setValue("houseMeasures", undefined);
+      clearErrors([
+        "environments",
+        "environmentsList",
+        "bedrooms",
+        "bathrooms",
+        "condition",
+        "age",
+        "houseMeasures",
+      ]);
+    } else {
+      if (
+        !getValues("environmentsList") ||
+        getValues("environmentsList")?.length === 0
+      ) {
+        setValue("environmentsList", [""]);
+      }
+    }
+  }, [hasVivienda, setValue, clearErrors]);
+
   const onSubmit = async (data: any) => {
     const payload = {
       title: data.title,
       description: data.description,
-      price: Number(data.price),
+      price: data.price ? Number(data.price) : undefined,
+      measure: data.measure ? Number(data.measure) : undefined,
       location: data.location,
       lat: data.lat ? Number(data.lat) : undefined,
       lng: data.lng ? Number(data.lng) : undefined,
       imageUrls: data.imageUrls?.filter(Boolean),
       videoUrls: data.videoUrls.filter(Boolean),
-      propertyType: data.propertyType,
       operationType: data.operationType,
-      environments: Number(data.environments),
-      environmentsList: data.environmentsList.filter(Boolean),
-      bedrooms: Number(data.bedrooms),
-      bathrooms: Number(data.bathrooms),
-      condition: data.condition,
-      age: data.age,
-      measuresList: data.measuresList.filter(Boolean),
       services: data.services || [],
       extras: data.extras || [],
-      floor: data.floor || undefined,
-      apartmentNumber: data.apartmentNumber || undefined,
-      pricePerDay: data.pricePerDay ? Number(data.pricePerDay) : undefined,
-      pricePerWeek: data.pricePerWeek ? Number(data.pricePerWeek) : undefined,
-      pricePerMonth: data.pricePerMonth
-        ? Number(data.pricePerMonth)
-        : undefined,
+      ...(data.extras?.includes("Vivienda")
+        ? {
+            environments: data.environments
+              ? Number(data.environments)
+              : undefined,
+            environmentsList: data.environmentsList?.filter(Boolean),
+            bedrooms: data.bedrooms ? Number(data.bedrooms) : undefined,
+            bathrooms: data.bathrooms ? Number(data.bathrooms) : undefined,
+            condition: data.condition,
+            age: data.age,
+            houseMeasures: data.houseMeasures,
+          }
+        : {}),
     };
 
     setTriedSubmit(false);
@@ -154,31 +183,6 @@ export default function PropertyFormRH() {
   const onError = () => {
     setTriedSubmit(true);
   };
-
-  const watchPropertyType = watch("propertyType");
-  const watchOperationType = watch("operationType");
-
-  useEffect(() => {
-    if (watchPropertyType !== "Departamento") {
-      setValue("floor", "");
-      setValue("apartmentNumber", "");
-      clearErrors(["floor", "apartmentNumber"]);
-    }
-    if (watchPropertyType === "Terreno") {
-      setValue("environments", undefined);
-      setValue("bedrooms", undefined);
-      setValue("bathrooms", undefined);
-      clearErrors(["environments", "bedrooms", "bathrooms"]);
-    }
-  }, [watchPropertyType, setValue, clearErrors]);
-
-  useEffect(() => {
-    if (watchOperationType !== "Alquiler temporal") {
-      setValue("temporalPrice", undefined);
-      setValue("priceBy", "");
-      clearErrors(["temporalPrice", "priceBy"]);
-    }
-  }, [watchOperationType, setValue, clearErrors]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#18182a] flex items-center justify-center py-10">
@@ -226,22 +230,6 @@ export default function PropertyFormRH() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <select
-                {...register("propertyType")}
-                className="w-full p-2 border border-gray-300 dark:border-[#393964] rounded bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white"
-              >
-                <option value="">Tipo de propiedad</option>
-                {PROPERTY_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              {errors.propertyType && (
-                <p className="text-red-500">{errors.propertyType.message}</p>
-              )}
-            </div>
-            <div>
-              <select
                 {...register("operationType")}
                 className="w-full p-2 border border-gray-300 dark:border-[#393964] rounded bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white"
               >
@@ -259,7 +247,7 @@ export default function PropertyFormRH() {
           </div>
 
           {/* Precio */}
-          {operationType !== "Alquiler temporal" && (
+          {operationType !== "Arrendamiento" && (
             <div>
               <label htmlFor="price" className="block font-medium mb-1">
                 Precio
@@ -276,143 +264,22 @@ export default function PropertyFormRH() {
             </div>
           )}
 
-          {/* Condicional: solo si es Departamento */}
-          {propertyType === "Departamento" && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="mb-4">
-                <label htmlFor="floor" className="block font-medium mb-1">
-                  Piso
-                </label>
-                <input
-                  {...register("floor")}
-                  placeholder="Piso"
-                  className="p-2 border rounded"
-                />
-              </div>
-              <div className="mb-4">
-                <label
-                  htmlFor="apartmentNumber"
-                  className="block font-medium mb-1"
-                >
-                  Depto
-                </label>
-                <input
-                  {...register("apartmentNumber")}
-                  placeholder="Depto"
-                  className="p-2 border rounded"
-                />
-              </div>
-              {errors.floor && (
-                <p className="text-red-500">{errors.floor.message}</p>
-              )}
-              {errors.apartmentNumber && (
-                <p className="text-red-500">{errors.apartmentNumber.message}</p>
-              )}
-            </div>
-          )}
-
-          {/* Condicional: Alquiler temporal */}
-          {operationType === "Alquiler temporal" && (
-            <div className="grid grid-cols-2 gap-4 items-end">
-              {/* Precio por período */}
-              <div>
-                <div>
-                  <label
-                    htmlFor="temporalPrice"
-                    className="block font-medium mb-1"
-                  >
-                    Precio por período
-                  </label>
-                  <input
-                    {...register("temporalPrice")}
-                    type="number"
-                    placeholder="Precio por período"
-                    className="p-2 border rounded w-full"
-                  />
-                  <p className="text-red-500 min-h-[1.5em]">
-                    {errors.temporalPrice?.message ?? ""}
-                  </p>
-                </div>
-              </div>
-              {/* Select de período */}
-              <div>
-                <div>
-                  <label className="block font-medium mb-1">Período</label>
-                  <select
-                    {...register("priceBy")}
-                    className="p-2 border rounded w-full"
-                  >
-                    <option value="">Período</option>
-                    {PRICE_BY.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-red-500 min-h-[1.5em]">
-                    {errors.priceBy?.message ?? ""}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Dormitorios, Baños y Ambientes (opcionales si es Terreno) */}
-          {watchPropertyType !== "Terreno" && (
-            <>
-              <div className="mb-4">
-                <label
-                  htmlFor="environments"
-                  className="block font-medium mb-1"
-                >
-                  Ambientes
-                </label>
-                <input
-                  {...register("environments")}
-                  type="number"
-                  placeholder="Ambientes"
-                  className="w-full p-2 border rounded"
-                />
-                {errors.environments && (
-                  <p className="text-red-500">{errors.environments.message}</p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="mb-4">
-                  <label htmlFor="bedrooms" className="block font-medium mb-1">
-                    Dormitorios
-                  </label>
-                  <input
-                    {...register("bedrooms")}
-                    type="number"
-                    placeholder="Dormitorios"
-                    className="p-2 border rounded"
-                  />
-                  {errors.bedrooms && (
-                    <p className="text-red-500">
-                      {errors.bedrooms.message as any}
-                    </p>
-                  )}
-                </div>
-                <div className="mb-4">
-                  <label htmlFor="bathrooms" className="block font-medium mb-1">
-                    Baños
-                  </label>
-                  <input
-                    {...register("bathrooms")}
-                    type="number"
-                    placeholder="Baños"
-                    className="p-2 border rounded"
-                  />
-                  {errors.bathrooms && (
-                    <p className="text-red-500">
-                      {errors.bathrooms.message as any}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
+          <div>
+            <label htmlFor="measure" className="block font-medium mb-1">
+              Hectáreas
+            </label>
+            <input
+              {...register("measure", {
+                valueAsNumber: true,
+              })}
+              type="number"
+              placeholder="Ej: 150 (en ha)"
+              className="w-full p-2 border rounded"
+            />
+            {errors.measure && (
+              <p className="text-red-500">{errors.measure.message}</p>
+            )}
+          </div>
 
           {/* Ubicación */}
           <div>
@@ -539,119 +406,140 @@ export default function PropertyFormRH() {
               </>
             )}
           />
-
-          <Controller
-            name="measuresList"
-            control={control}
-            render={({ field }) => (
-              <>
-                <DynamicList
-                  label="Medidas"
-                  items={(field.value ?? [""]).filter(
-                    (x): x is string => typeof x === "string"
-                  )}
-                  onChange={(i, v) =>
-                    field.onChange(
-                      (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                    )
-                  }
-                  onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-                  onRemove={(i) =>
-                    field.onChange(
-                      (field.value ?? [""]).filter((_, ix) => ix !== i)
-                    )
-                  }
+          {hasVivienda && (
+            <>
+              <div>
+                <label
+                  htmlFor="houseMeasures"
+                  className="block font-medium mb-1"
+                >
+                  Superficie (Vivienda)
+                </label>
+                <input
+                  {...register("houseMeasures", {
+                    valueAsNumber: true,
+                  })}
+                  type="number"
+                  placeholder="Ej: 150 (en m²)"
+                  className="w-full p-2 border rounded"
                 />
-                {/* Error general del array */}
-                {errors.measuresList?.message && (
-                  <p className="text-red-500">{errors.measuresList.message}</p>
+                {errors.houseMeasures && (
+                  <p className="text-red-500">{errors.houseMeasures.message}</p>
                 )}
-                {/* Errores por cada elemento */}
-                {Array.isArray(errors.measuresList) &&
-                  errors.measuresList.map(
-                    (err, i) =>
-                      err && (
-                        <p key={i} className="text-red-500">
-                          Medida {i + 1}: {err?.message}
-                        </p>
-                      )
-                  )}
-              </>
-            )}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Antigüedad */}
-            <div>
-              <label className="font-medium block mb-1">Antigüedad</label>
-              <input
-                {...register("age")}
-                placeholder="Ej: A Estrenar, 10 años, etc."
-                className="w-full p-2 border rounded"
-              />
-              {errors.age && (
-                <p className="text-red-500 text-sm">
-                  {errors.age.message as any}
-                </p>
-              )}
-            </div>
-            {/* Condición */}
-            <div>
-              <label className="font-medium block mb-1">Condición</label>
-              <input
-                {...register("condition")}
-                placeholder="Ej: Nueva, Buen estado, etc."
-                className="w-full p-2 border rounded"
-              />
-              {errors.condition && (
-                <p className="text-red-500 text-sm">
-                  {errors.condition.message as any}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <Controller
-            name="environmentsList"
-            control={control}
-            render={({ field }) => (
-              <>
-                <DynamicList
-                  label="Ambientes"
-                  items={(field.value ?? [""]).filter(
-                    (x): x is string => typeof x === "string"
-                  )}
-                  onChange={(i, v) =>
-                    field.onChange(
-                      (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                    )
-                  }
-                  onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-                  onRemove={(i) =>
-                    field.onChange(
-                      (field.value ?? [""]).filter((_, ix) => ix !== i)
-                    )
-                  }
+              </div>
+              <div>
+                <label className="block font-medium mb-1">
+                  Cantidad de ambientes
+                </label>
+                <input
+                  {...register("environments")}
+                  type="number"
+                  placeholder="Ambientes"
+                  className="w-full p-2 border rounded"
                 />
-                {/* Error general del array */}
-                {errors.environmentsList?.message && (
-                  <p className="text-red-500">
-                    {errors.environmentsList.message}
-                  </p>
+                {errors.environments && (
+                  <p className="text-red-500">{errors.environments.message}</p>
                 )}
-                {/* Errores por cada elemento */}
-                {Array.isArray(errors.environmentsList) &&
-                  errors.environmentsList.map(
-                    (err, i) =>
-                      err && (
-                        <p key={i} className="text-red-500">
-                          Ambientes {i + 1}: {err?.message}
-                        </p>
-                      )
-                  )}
-              </>
-            )}
-          />
+              </div>
+              {/* Lista de ambientes */}
+              <Controller
+                name="environmentsList"
+                control={control}
+                render={({ field }) => (
+                  <>
+                    <DynamicList
+                      label="Ambientes (detalle)"
+                      items={
+                        Array.isArray(field.value) && field.value.length > 0
+                          ? field.value
+                          : [""]
+                      }
+                      onChange={(i, v) =>
+                        field.onChange(
+                          (field.value ?? [""]).map((x, ix) =>
+                            ix === i ? v : x
+                          )
+                        )
+                      }
+                      onAdd={() =>
+                        field.onChange([...(field.value ?? [""]), ""])
+                      }
+                      onRemove={(i) =>
+                        field.onChange(
+                          (field.value ?? [""]).filter((_, ix) => ix !== i)
+                        )
+                      }
+                    />
+                    {errors.environmentsList?.message && (
+                      <p className="text-red-500">
+                        {errors.environmentsList.message}
+                      </p>
+                    )}
+                    {Array.isArray(errors.environmentsList) &&
+                      errors.environmentsList.map(
+                        (err, i) =>
+                          err && (
+                            <p key={i} className="text-red-500">
+                              Ambiente {i + 1}: {err?.message}
+                            </p>
+                          )
+                      )}
+                  </>
+                )}
+              />
+
+              {/* Dormitorios */}
+              <div>
+                <label className="block font-medium mb-1">Dormitorios</label>
+                <input
+                  {...register("bedrooms")}
+                  type="number"
+                  placeholder="Dormitorios"
+                  className="w-full p-2 border rounded"
+                />
+                {errors.bedrooms && (
+                  <p className="text-red-500">{errors.bedrooms.message}</p>
+                )}
+              </div>
+              {/* Baños */}
+              <div>
+                <label className="block font-medium mb-1">Baños</label>
+                <input
+                  {...register("bathrooms")}
+                  type="number"
+                  placeholder="Baños"
+                  className="w-full p-2 border rounded"
+                />
+                {errors.bathrooms && (
+                  <p className="text-red-500">{errors.bathrooms.message}</p>
+                )}
+              </div>
+              {/* Condición */}
+              <div>
+                <label className="block font-medium mb-1">Condición</label>
+                <input
+                  {...register("condition")}
+                  placeholder="Condición"
+                  className="w-full p-2 border rounded"
+                />
+                {errors.condition && (
+                  <p className="text-red-500">{errors.condition.message}</p>
+                )}
+              </div>
+              {/* Antigüedad */}
+              <div>
+                <label className="block font-medium mb-1">Antigüedad</label>
+                <input
+                  {...register("age")}
+                  placeholder="Antigüedad"
+                  className="w-full p-2 border rounded"
+                />
+                {errors.age && (
+                  <p className="text-red-500">{errors.age.message}</p>
+                )}
+              </div>
+            </>
+          )}
 
           {/* CheckboxGroup para features */}
           <div className="mb-4">

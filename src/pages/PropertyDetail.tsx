@@ -11,28 +11,23 @@ interface IProperty {
   ref: string;
   title: string;
   description?: string;
-  price: number;
+  price?: number;
+  measure: number;
   location: string;
   lat?: number;
   lng?: number;
   imageUrls: string[];
   videoUrls: string[];
   operationType: string;
-  propertyType: string;
   environments: number;
   environmentsList: string[];
   bedrooms: number;
   bathrooms: number;
   condition: string;
   age: string;
-  measuresList: string[];
+  houseMeasures: string[];
   services: string[];
   extras: string[];
-  floor?: string;
-  apartmentNumber?: string;
-  pricePerDay?: number;
-  pricePerWeek?: number;
-  pricePerMonth?: number;
 }
 
 export default function PropertyDetail() {
@@ -55,7 +50,10 @@ export default function PropertyDetail() {
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-10 animate-fade-in">
       {/* Galería con swipe y miniaturas */}
-      <PropertyGallery images={property.imageUrls} videos={property.videoUrls} />
+      <PropertyGallery
+        images={property.imageUrls}
+        videos={property.videoUrls}
+      />
 
       {/* HEADER: Título, Ref, Precio, Tipo de operación */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -67,72 +65,68 @@ export default function PropertyDetail() {
           </span>
         </div>
         <div className="text-3xl text-green-600 font-bold mt-4 md:mt-0">
-          ${property.price?.toLocaleString()}
+          {property.operationType === "Arrendamiento"
+            ? "Precio a acordar"
+            : property.price
+            ? `$${property.price.toLocaleString()}`
+            : "Sin precio"}
         </div>
+      </div>
+
+      {/* HECTÁREAS */}
+      <div className="text-lg font-semibold mb-2">
+        Hectáreas:{" "}
+        <span className="text-primary font-bold">
+          {property.measure?.toLocaleString()} ha
+        </span>
       </div>
 
       {/* UBICACIÓN */}
       <div className="text-gray-700 text-lg">{property.location}</div>
 
-      {/* RESUMEN DE CARACTERÍSTICAS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-sm border rounded-xl bg-gray-50 dark:bg-[#22223b] p-4">
-        <div><strong>Tipo:</strong> {property.propertyType}</div>
-        {property.environments ? (
-          <div><strong>Ambientes:</strong> {property.environments}</div>
-        ) : null}
-        {property.bedrooms ? (
-          <div><strong>Dormitorios:</strong> {property.bedrooms}</div>
-        ) : null}
-        {property.bathrooms ? (
-          <div><strong>Baños:</strong> {property.bathrooms}</div>
-        ) : null}
-        <div><strong>Condición:</strong> {property.condition}</div>
-        <div><strong>Antigüedad:</strong> {property.age}</div>
-        {/* Departamento extra info */}
-        {property.propertyType === "Departamento" && property.floor && (
-          <div><strong>Piso:</strong> {property.floor}</div>
-        )}
-        {property.propertyType === "Departamento" && property.apartmentNumber && (
-          <div><strong>Depto.:</strong> {property.apartmentNumber}</div>
-        )}
-        {/* Alquiler temporal precios */}
-        {property.operationType === "Alquiler temporal" && property.pricePerDay && (
-          <div><strong>Precio por día:</strong> ${property.pricePerDay}</div>
-        )}
-        {property.operationType === "Alquiler temporal" && property.pricePerWeek && (
-          <div><strong>Precio por semana:</strong> ${property.pricePerWeek}</div>
-        )}
-        {property.operationType === "Alquiler temporal" && property.pricePerMonth && (
-          <div><strong>Precio por mes:</strong> ${property.pricePerMonth}</div>
-        )}
-      </div>
-
-      {/* SUPERFICIES Y MEDIDAS */}
-      {property.measuresList?.length > 0 && property.measuresList.some(Boolean) && (
-        <div>
-          <h2 className="text-xl font-bold mb-2">Superficies y Medidas</h2>
-          <ul className="list-disc list-inside">
-            {property.measuresList.filter(Boolean).map((m, i) => (
-              <li key={i}>{m}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* AMBIENTES DETALLADOS */}
-      {property.environmentsList?.length > 0 && property.environmentsList.some(Boolean) && (
-        <div>
-          <h2 className="text-xl font-bold mb-2">Ambientes</h2>
-          <ul className="flex flex-wrap gap-2">
-            {property.environmentsList.filter(Boolean).map((amb, i) => (
-              <li key={i} className="flex items-center bg-green-50 dark:bg-green-900/20 rounded px-2 py-1">
-                <Check className="w-4 h-4 text-green-600 mr-1" />
-                {amb}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {property.extras?.includes("vivienda") ? (
+        <>
+          <h2 className="text-xl font-bold mb-2">Detalles de la vivienda</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-sm border rounded-xl bg-gray-50 dark:bg-[#22223b] p-4">
+            <div>
+              <strong>Superficie: {property.houseMeasures}m²</strong>
+            </div>
+            <div>
+              <strong>Ambientes:</strong> {property.environments}
+            </div>
+            <div>
+              <strong>Dormitorios:</strong> {property.bedrooms}
+            </div>
+            <div>
+              <strong>Baños:</strong> {property.bathrooms}
+            </div>
+            <div>
+              <strong>Condición:</strong> {property.condition}
+            </div>
+            <div>
+              <strong>Antigüedad:</strong> {property.age}
+            </div>
+          </div>
+          {/* AMBIENTES DETALLADOS */}
+          {property.environmentsList?.length > 0 &&
+            property.environmentsList.some(Boolean) && (
+              <div>
+                <h2 className="text-xl font-bold mb-2">Ambientes</h2>
+                <ul className="flex flex-wrap gap-2">
+                  {property.environmentsList.filter(Boolean).map((amb, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center bg-green-50 dark:bg-green-900/20 rounded px-2 py-1"
+                    >
+                      <Check className="w-4 h-4 text-green-600 mr-1" />
+                      {amb}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+        </>
+      ) : null}
 
       {/* SERVICIOS */}
       {property.services?.length > 0 && property.services.some(Boolean) && (
@@ -140,7 +134,10 @@ export default function PropertyDetail() {
           <h2 className="text-xl font-bold mb-2">Servicios</h2>
           <ul className="flex flex-wrap gap-2">
             {property.services.filter(Boolean).map((serv, i) => (
-              <li key={i} className="flex items-center bg-blue-50 dark:bg-blue-900/20 rounded px-2 py-1">
+              <li
+                key={i}
+                className="flex items-center bg-blue-50 dark:bg-blue-900/20 rounded px-2 py-1"
+              >
                 <Check className="w-4 h-4 text-blue-600 mr-1" />
                 {serv}
               </li>
@@ -155,7 +152,10 @@ export default function PropertyDetail() {
           <h2 className="text-xl font-bold mb-2">Extras</h2>
           <ul className="flex flex-wrap gap-2">
             {property.extras.filter(Boolean).map((ext, i) => (
-              <li key={i} className="flex items-center bg-purple-50 dark:bg-purple-900/20 rounded px-2 py-1">
+              <li
+                key={i}
+                className="flex items-center bg-purple-50 dark:bg-purple-900/20 rounded px-2 py-1"
+              >
                 <Check className="w-4 h-4 text-purple-600 mr-1" />
                 {ext}
               </li>
@@ -168,7 +168,9 @@ export default function PropertyDetail() {
       {property.description && (
         <div>
           <h2 className="text-xl font-bold mb-2">Descripción</h2>
-          <p className="text-gray-800 dark:text-gray-200">{property.description}</p>
+          <p className="text-gray-800 dark:text-gray-200">
+            {property.description}
+          </p>
         </div>
       )}
 
@@ -185,7 +187,8 @@ export default function PropertyDetail() {
               <Marker
                 position={pos}
                 icon={L.icon({
-                  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+                  iconUrl:
+                    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
                   iconAnchor: [12, 41],
                 })}
               >

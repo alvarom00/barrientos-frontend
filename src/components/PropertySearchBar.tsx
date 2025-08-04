@@ -1,31 +1,18 @@
 import { useState } from "react";
 import type { SearchFilters } from "../pages/Home";
 
-const OPERATION_TYPES = ["Venta", "Alquiler", "Alquiler temporal"];
-const PROPERTY_TYPES = [
-  "Departamento",
-  "Local",
-  "Campo",
-  "Finca",
-  "Cochera",
-  "Casa",
-  "Terreno",
-  "Galpón",
-  "Quinta",
-];
-
+const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 interface PropertySearchBarProps {
   onSearch: (filters: SearchFilters) => void;
 }
 
 export default function PropertySearchBar({ onSearch }: PropertySearchBarProps) {
   const [operationType, setOperationType] = useState("");
-  const [propertyType, setPropertyType] = useState("");
   const [query, setQuery] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch?.({ operationType, propertyType, query });
+    onSearch?.({ operationType, query });
   };
 
   return (
@@ -41,17 +28,6 @@ export default function PropertySearchBar({ onSearch }: PropertySearchBarProps) 
         <option value="">Tipo de operación</option>
         {OPERATION_TYPES.map((op) => (
           <option key={op} value={op}>{op}</option>
-        ))}
-      </select>
-
-      <select
-        className="p-2 rounded border dark:bg-[#18182a] dark:text-white border-gray-300 dark:border-[#393964] flex-1"
-        value={propertyType}
-        onChange={(e) => setPropertyType(e.target.value)}
-      >
-        <option value="">Tipo de propiedad</option>
-        {PROPERTY_TYPES.map((pt) => (
-          <option key={pt} value={pt}>{pt}</option>
         ))}
       </select>
 
