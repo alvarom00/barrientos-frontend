@@ -13,6 +13,11 @@ import { useEffect, useState } from "react";
 const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 
 export default function PropertyFormRH() {
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [existingVideos, setExistingVideos] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const {
     register,
     control,
@@ -22,26 +27,73 @@ export default function PropertyFormRH() {
     getValues,
     clearErrors,
     reset,
+    trigger,
     formState: { errors, isValid },
   } = useForm({
     resolver: yupResolver(propertySchema),
+    context: {
+      existingImages,
+      existingVideos,
+    },
     mode: "onChange",
-    defaultValues: {},
+    defaultValues: {
+      imageFiles: [],
+      videoFiles: [],
+    },
   });
 
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const [triedSubmit, setTriedSubmit] = useState(false);
   const operationType = watch("operationType");
   const extras = watch("extras") ?? [];
+
   const hasVivienda = extras.includes("Vivienda");
-  const [triedSubmit, setTriedSubmit] = useState(false);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    setImageFiles([...imageFiles, ...files]);
+    setValue("imageFiles", [...imageFiles, ...files], { shouldValidate: true });
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    setVideoFiles([...videoFiles, ...files]);
+    setValue("videoFiles", [...videoFiles, ...files], { shouldValidate: true });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveExistingImage = (index: number) => {
+    setExistingImages(existingImages.filter((_, i) => i !== index));
+    clearErrors("imageFiles");
+  };
+
+  const handleRemoveVideo = (index: number) => {
+    setVideoFiles(videoFiles.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveExistingVideo = (index: number) => {
+    setExistingVideos(existingVideos.filter((_, i) => i !== index));
+    clearErrors("videoFiles");
+  };
+
+  useEffect(() => {
+    trigger(["imageFiles", "videoFiles"]);
+  }, [existingImages, existingVideos, trigger]);
 
   useEffect(() => {
     if (id) {
       fetch(`http://localhost:3000/api/properties/${id}`)
         .then((res) => res.json())
         .then((data) => {
+          setExistingImages(data.imageUrls || []);
+          setExistingVideos(data.videoUrls || []);
           reset({
             ...data,
             price: data.price?.toString() ?? undefined,
@@ -93,10 +145,15 @@ export default function PropertyFormRH() {
             location: data.location ?? "",
             title: data.title ?? "",
             description: data.description ?? "",
+            imageFiles: [],
+            videoFiles: [],
           });
+          setTimeout(() => {
+            trigger(["imageFiles", "videoFiles"]);
+          }, 0);
         });
     }
-  }, [id, reset]);
+  }, [id, reset, trigger]);
 
   useEffect(() => {
     if (!hasVivienda) {
@@ -124,36 +181,47 @@ export default function PropertyFormRH() {
         setValue("environmentsList", [""]);
       }
     }
-  }, [hasVivienda, setValue, clearErrors]);
+  }, [hasVivienda, setValue, clearErrors, getValues]);
 
   const onSubmit = async (data: any) => {
-    const payload = {
-      title: data.title,
-      description: data.description,
-      price: data.price ? Number(data.price) : undefined,
-      measure: data.measure ? Number(data.measure) : undefined,
-      location: data.location,
-      lat: data.lat ? Number(data.lat) : undefined,
-      lng: data.lng ? Number(data.lng) : undefined,
-      imageUrls: data.imageUrls?.filter(Boolean),
-      videoUrls: data.videoUrls.filter(Boolean),
-      operationType: data.operationType,
-      services: data.services || [],
-      extras: data.extras || [],
-      ...(data.extras?.includes("Vivienda")
-        ? {
-            environments: data.environments
-              ? Number(data.environments)
-              : undefined,
-            environmentsList: data.environmentsList?.filter(Boolean),
-            bedrooms: data.bedrooms ? Number(data.bedrooms) : undefined,
-            bathrooms: data.bathrooms ? Number(data.bathrooms) : undefined,
-            condition: data.condition,
-            age: data.age,
-            houseMeasures: data.houseMeasures,
-          }
-        : {}),
-    };
+    const formData = new FormData();
+
+    // Campos básicos
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    if (data.price) formData.append("price", data.price);
+    if (data.measure) formData.append("measure", data.measure);
+    formData.append("location", data.location);
+    if (data.lat) formData.append("lat", data.lat);
+    if (data.lng) formData.append("lng", data.lng);
+    formData.append("operationType", data.operationType);
+
+    // Arrays (si existen)
+    (data.services || []).forEach((s: string) =>
+      formData.append("services[]", s)
+    );
+    (data.extras || []).forEach((e: string) => formData.append("extras[]", e));
+
+    // Vivienda extras condicionales
+    if (data.extras?.includes("Vivienda")) {
+      if (data.environments) formData.append("environments", data.environments);
+      (data.environmentsList || []).forEach((v: string) =>
+        formData.append("environmentsList[]", v)
+      );
+      if (data.bedrooms) formData.append("bedrooms", data.bedrooms);
+      if (data.bathrooms) formData.append("bathrooms", data.bathrooms);
+      if (data.condition) formData.append("condition", data.condition);
+      if (data.age) formData.append("age", data.age);
+      if (data.houseMeasures)
+        formData.append("houseMeasures", data.houseMeasures);
+    }
+
+    // Agregá los archivos:
+    existingImages.forEach((url) => formData.append("keepImages", url));
+    imageFiles.forEach((file) => formData.append("images", file));
+
+    existingVideos.forEach((url) => formData.append("keepVideos", url));
+    videoFiles.forEach((file) => formData.append("videos", file));
 
     setTriedSubmit(false);
 
@@ -165,8 +233,7 @@ export default function PropertyFormRH() {
     try {
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!res.ok) {
@@ -327,85 +394,118 @@ export default function PropertyFormRH() {
               </p>
             </div>
           </div>
+          {/* IMÁGENES */}
+          <div>
+            <label className="block font-medium mb-1">Imágenes</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageChange}
+              className="w-full p-2 border rounded bg-white"
+            />
 
-          {/* DynamicList: imágenes, videos, medidas, ambientesList */}
-          <Controller
-            name="imageUrls"
-            control={control}
-            render={({ field }) => (
-              <>
-                <DynamicList
-                  label="Imágenes"
-                  items={(field.value ?? [""]).filter(
-                    (x): x is string => typeof x === "string"
-                  )}
-                  onChange={(i, v) =>
-                    field.onChange(
-                      (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                    )
-                  }
-                  onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-                  onRemove={(i) =>
-                    field.onChange(
-                      (field.value ?? [""]).filter((_, ix) => ix !== i)
-                    )
-                  }
-                />
-                {/* Error general del array */}
-                {errors.imageUrls?.message && (
-                  <p className="text-red-500">{errors.imageUrls.message}</p>
-                )}
-                {/* Errores por cada elemento */}
-                {Array.isArray(errors.imageUrls) &&
-                  errors.imageUrls.map(
-                    (err, i) =>
-                      err && (
-                        <p key={i} className="text-red-500">
-                          Imagen {i + 1}: {err?.message}
-                        </p>
-                      )
-                  )}
-              </>
-            )}
-          />
+            {/* Previews de imágenes ya guardadas */}
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {existingImages.map((url, i) => (
+                <div key={`exist-${i}`} className="relative w-24 h-16">
+                  <img
+                    src={`${API_URL}${url}`}
+                    alt={`img-${i}`}
+                    className="w-full h-full object-cover rounded border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExistingImage(i)}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    title="Borrar imagen"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {/* Previews de imágenes nuevas */}
+              {imageFiles.map((file, i) => (
+                <div key={`new-${i}`} className="relative w-24 h-16">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt=""
+                    className="w-full h-full object-cover rounded border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(i)}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    title="Borrar imagen"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Error de validación */}
+            {errors.imageFiles &&
+              typeof errors.imageFiles.message === "string" && (
+                <p className="text-red-500">{errors.imageFiles.message}</p>
+              )}
+          </div>
 
-          <Controller
-            name="videoUrls"
-            control={control}
-            render={({ field }) => (
-              <>
-                <DynamicList
-                  label="Videos"
-                  items={field.value ?? [""]}
-                  onChange={(i, v) =>
-                    field.onChange(
-                      (field.value ?? [""]).map((x, ix) => (ix === i ? v : x))
-                    )
-                  }
-                  onAdd={() => field.onChange([...(field.value ?? [""]), ""])}
-                  onRemove={(i) =>
-                    field.onChange(
-                      (field.value ?? [""]).filter((_, ix) => ix !== i)
-                    )
-                  }
-                />
-                {/* Error general del array */}
-                {errors.videoUrls?.message && (
-                  <p className="text-red-500">{errors.videoUrls.message}</p>
-                )}
-                {/* Errores por cada elemento */}
-                {Array.isArray(errors.videoUrls) &&
-                  errors.videoUrls.map(
-                    (err, i) =>
-                      err && (
-                        <p key={i} className="text-red-500">
-                          Video {i + 1}: {err?.message}
-                        </p>
-                      )
-                  )}
-              </>
-            )}
-          />
+          {/* VIDEOS */}
+          <div>
+            <label className="block font-medium mb-1">Videos</label>
+            <input
+              type="file"
+              accept="video/*"
+              multiple
+              onChange={handleVideoChange}
+              className="w-full p-2 border rounded bg-white"
+            />
+
+            {/* Previews de videos ya guardados */}
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {existingVideos.map((url, i) => (
+                <div key={`exist-video-${i}`} className="relative w-24 h-16">
+                  <video
+                    src={`${API_URL}${url}`}
+                    className="w-full h-full rounded border"
+                    controls
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExistingVideo(i)}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    title="Borrar video"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {/* Previews de videos nuevos */}
+              {videoFiles.map((file, i) => (
+                <div key={`new-video-${i}`} className="relative w-24 h-16">
+                  <video
+                    src={URL.createObjectURL(file)}
+                    className="w-full h-full rounded border"
+                    controls
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveVideo(i)}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    title="Borrar video"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Error de validación */}
+            {errors.videoFiles &&
+              typeof errors.videoFiles.message === "string" && (
+                <p className="text-red-500">{errors.videoFiles.message}</p>
+              )}
+          </div>
+
           {hasVivienda && (
             <>
               <div>

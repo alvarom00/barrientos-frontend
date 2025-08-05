@@ -1,6 +1,6 @@
 import * as yup from "yup";
 
-export const propertySchema = yup.object({
+export const propertySchema = yup.object().shape({
   title: yup
     .string()
     .min(5, "Mínimo 5 caracteres")
@@ -116,26 +116,16 @@ export const propertySchema = yup.object({
     .required("La longitud es obligatoria"),
 
   // Arrays para imágenes y features
-  imageUrls: yup
-    .array()
-    .of(
-      yup
-        .string()
-        .url("Cada imagen debe ser una URL válida.")
-        .required("La URL de la imagen es obligatoria.")
-    )
-    .min(1, "Debes subir al menos una imagen.")
-    .required("Debes subir al menos una imagen."),
-
-  videoUrls: yup
-    .array()
-    .of(
-      yup
-        .string()
-        .url("Cada video debe ser una URL válida.")
-        .required("La URL del video es obligatoria.")
-    )
-    .nullable(),
+  imageFiles: yup
+    .mixed()
+    .test("required", "Debes subir al menos una imagen.", function (value) {
+      // @ts-ignore
+      const { existingImages = [] } = this.options?.context || {};
+      const hasNew = Array.isArray(value) && value.length > 0;
+      const hasExisting = Array.isArray(existingImages) && existingImages.length > 0;
+      return hasNew || hasExisting;
+    }),
+  videoFiles: yup.mixed(),
 
   houseMeasures: yup.number().when("extras", {
     is: (extras: string[] = []) => extras.includes("Vivienda"),
@@ -147,11 +137,11 @@ export const propertySchema = yup.object({
     otherwise: (s) => s.notRequired(),
   }),
   measure: yup
-  .number()
-  .typeError("Debes ingresar un número válido para las hectáreas.")
-  .positive("El número debe ser mayor a 0.")
-  .required("Las hectáreas son obligatorias."),
-  
+    .number()
+    .typeError("Debes ingresar un número válido para las hectáreas.")
+    .positive("El número debe ser mayor a 0.")
+    .required("Las hectáreas son obligatorias."),
+
   services: yup.array().of(yup.string()),
   extras: yup.array().of(yup.string()).default([]),
 });
