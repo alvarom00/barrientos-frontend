@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 export interface IProperty {
   _id: string;
   ref: string;
@@ -25,18 +27,32 @@ export interface IProperty {
   extras: string[];
 }
 
+function getAssetUrl(url: string) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return `${API_URL}${url}`;
+}
+
 export default function PropertyCard({ property }: { property: IProperty }) {
+  const firstImage = property.imageUrls?.find(Boolean);
+
   return (
     <Link
       to={`/properties/${property._id}`}
       className="block group rounded-xl overflow-hidden bg-white dark:bg-[#232347] shadow hover:shadow-lg hover:scale-[1.02] transition-all duration-300 card-hover"
       tabIndex={0}
     >
-      <img
-        src={property.imageUrls[0]}
-        alt={property.title}
-        className="w-full h-48 object-cover group-hover:opacity-90 transition-opacity"
-      />
+      {firstImage ? (
+        <img
+          src={getAssetUrl(firstImage)}
+          alt={property.title}
+          className="w-full h-48 object-cover group-hover:opacity-90 transition-opacity"
+        />
+      ) : (
+        <div className="w-full h-48 flex items-center justify-center bg-gray-100 text-gray-400 text-4xl">
+          Sin imagen
+        </div>
+      )}
       <div className="p-4">
         <h2 className="text-lg font-bold mb-1 group-hover:text-primary">
           {property.title}

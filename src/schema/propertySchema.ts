@@ -31,7 +31,7 @@ export const propertySchema = yup.object().shape({
         s
           .typeError("Debe ser número")
           .min(1, "Mínimo 1 ambiente")
-          .required("Ambientes requeridos"),
+          .required("Campo requerido"),
       otherwise: (s) => s.notRequired().nullable(),
     }),
 
@@ -61,7 +61,7 @@ export const propertySchema = yup.object().shape({
         s
           .typeError("Debe ser número")
           .min(1, "Mínimo 1 dormitorio")
-          .required("Dormitorios requeridos"),
+          .required("Campo requerido"),
       otherwise: (s) => s.notRequired().nullable(),
     }),
 
@@ -77,7 +77,7 @@ export const propertySchema = yup.object().shape({
         s
           .typeError("Debe ser número")
           .min(1, "Mínimo 1 baño")
-          .required("Baños requeridos"),
+          .required("Campo requerido"),
       otherwise: (s) => s.notRequired().nullable(),
     }),
 

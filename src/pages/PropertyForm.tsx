@@ -9,6 +9,8 @@ import {
   EXTRAS,
 } from "../components/CustomInputs";
 import { useEffect, useState } from "react";
+import L from "leaflet";
+import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
 
 const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 
@@ -42,12 +44,41 @@ export default function PropertyFormRH() {
     },
   });
 
+  function LocationPicker({
+    value,
+    onChange,
+  }: {
+    value: { lat: number; lng: number } | null;
+    onChange: (coords: { lat: number; lng: number }) => void;
+  }) {
+    // Un handler para el click en el mapa
+    useMapEvents({
+      click(e) {
+        onChange(e.latlng);
+      },
+    });
+
+    // El marker se muestra solo si hay coords
+    return value ? (
+      <Marker
+        position={value}
+        icon={L.icon({
+          iconUrl:
+            "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+          iconAnchor: [12, 41],
+        })}
+      />
+    ) : null;
+  }
+
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
   const [triedSubmit, setTriedSubmit] = useState(false);
   const operationType = watch("operationType");
   const extras = watch("extras") ?? [];
+  const lat = watch("lat");
+  const lng = watch("lng");
 
   const hasVivienda = extras.includes("Vivienda");
 
@@ -364,35 +395,51 @@ export default function PropertyFormRH() {
           </div>
 
           {/* Lat/Lng */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="lat" className="block font-medium mb-1">
-                Latitud
-              </label>
+          <div>
+            <label className="block font-medium mb-1">
+              Ubicación en el mapa
+            </label>
+            <div className="h-64 w-full rounded-xl overflow-hidden mb-2">
+              <MapContainer
+                center={lat && lng ? [lat, lng] : [-36, -65]} // centro por default Argentina
+                zoom={lat && lng ? 13 : 5}
+                className="h-full w-full"
+                style={{ height: 256 }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap contributors"
+                />
+                <LocationPicker
+                  value={lat && lng ? { lat, lng } : null}
+                  onChange={({ lat, lng }) => {
+                    setValue("lat", lat);
+                    setValue("lng", lng);
+                    trigger(["lat", "lng"]);
+                  }}
+                />
+              </MapContainer>
+            </div>
+            <div className="flex gap-2">
               <input
                 {...register("lat")}
                 type="number"
                 placeholder="Latitud"
-                className="w-full p-2 border border-gray-300 dark:border-[#393964] bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white rounded"
+                className="w-1/2 p-2 border rounded"
+                readOnly
               />
-              <p className="text-red-500 min-h-[1.5em]">
-                {errors.lat?.message ?? ""}
-              </p>
-            </div>
-            <div>
-              <label htmlFor="lng" className="block font-medium mb-1">
-                Longitud
-              </label>
               <input
                 {...register("lng")}
                 type="number"
                 placeholder="Longitud"
-                className="w-full p-2 border border-gray-300 dark:border-[#393964] bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white rounded"
+                className="w-1/2 p-2 border rounded"
+                readOnly
               />
-              <p className="text-red-500 min-h-[1.5em]">
-                {errors.lng?.message ?? ""}
-              </p>
             </div>
+            {/* Mensaje de error si corresponde */}
+            <p className="text-red-500">
+              {errors.lat?.message || errors.lng?.message}
+            </p>
           </div>
           {/* IMÁGENES */}
           <div>
