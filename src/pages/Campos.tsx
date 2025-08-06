@@ -7,7 +7,7 @@ interface CamposProps {
   operationType?: string;
 }
 
-const stagger = 0.3;
+const stagger = 0.1;
 
 const PAGE_SIZE = 6;
 

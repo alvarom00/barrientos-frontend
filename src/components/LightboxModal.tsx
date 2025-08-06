@@ -111,13 +111,13 @@ export function LightboxModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99] flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-1500 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
       {/* Close button */}
       <button
-        className="absolute top-6 right-6 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition z-50"
+        className="absolute top-6 right-6 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition z-2000"
         onClick={onClose}
         aria-label="Cerrar"
       >
