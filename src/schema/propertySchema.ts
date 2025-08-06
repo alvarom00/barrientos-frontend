@@ -11,10 +11,15 @@ export const propertySchema = yup.object().shape({
     .min(10, "Muy corto")
     .max(2000, "Demasiado largo")
     .required("Descripción requerida"),
-  price: yup.number().when("operationType", {
-    is: (val: string) => val !== "Arrendamiento",
-    then: (s) => s.typeError("Debe ser un número").required("Precio requerido"),
-    otherwise: (s) => s.notRequired(),
+  price: yup
+  .number()
+  .transform((value, originalValue) =>
+    originalValue === "" || originalValue === undefined ? null : value
+  )
+  .when("operationType", {
+    is: "Venta",
+    then: (schema) => schema.required("El precio es obligatorio").typeError("El precio debe ser un número"),
+    otherwise: (schema) => schema.notRequired().nullable(),
   }),
   operationType: yup.string().required("Operación requerida"),
 

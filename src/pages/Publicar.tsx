@@ -1,0 +1,378 @@
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { useState } from "react";
+
+const schema = yup.object().shape({
+  nombre: yup.string().required("El nombre y apellido es obligatorio"),
+  email: yup
+    .string()
+    .email("Ingrese un correo electrónico válido")
+    .required("El email es obligatorio"),
+  eres: yup
+    .string()
+    .oneOf(["Propietario", "Inmobiliaria", "Vendedor"], "Seleccione una opción")
+    .required("Este campo es obligatorio"),
+  ubicacion: yup.string().required("La ubicación es obligatoria"),
+  superficie: yup
+    .number()
+    .typeError("Ingrese solo números")
+    .positive("La superficie debe ser mayor a 0")
+    .required("La superficie es obligatoria"),
+  tipoCampo: yup
+    .string()
+    .oneOf(
+      [
+        "Agricola",
+        "Ganadero",
+        "Mixto",
+        "Turistico / Recreativo",
+        "Otro",
+      ],
+      "Seleccione un tipo de campo"
+    )
+    .required("Este campo es obligatorio"),
+  precio: yup
+    .number()
+    .typeError("Ingrese solo números")
+    .min(0, "El precio no puede ser negativo")
+    .required("El precio estimado es obligatorio"),
+  caracteristicas: yup
+    .string()
+    .required("Por favor, indique características a destacar"),
+  documentacion: yup
+    .string()
+    .oneOf(
+      ["Si", "En tramite", "No"],
+      "Seleccione una opción"
+    )
+    .required("Este campo es obligatorio"),
+  fotosVideos: yup
+    .string()
+    .oneOf(
+      [
+        "Si, ya tengo",
+        "No, necesito ayuda para crearlos",
+        "Tengo, pero quiero mejorarlos",
+      ],
+      "Seleccione una opción"
+    )
+    .required("Este campo es obligatorio"),
+  publicarRedes: yup
+    .string()
+    .oneOf(
+      [
+        "Si, con ubicacion aproximada",
+        "Si, con detalles completos",
+        "No, solo para contactos privados",
+      ],
+      "Seleccione una opción"
+    )
+    .required("Este campo es obligatorio"),
+  telefono: yup
+    .string()
+    .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
+    .required("El teléfono es obligatorio"),
+  comentarios: yup.string(),
+});
+
+export default function Publicar() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+  } = useForm({
+    resolver: yupResolver(schema),
+    mode: "onBlur",
+  });
+  const [triedSubmit, setTriedSubmit] = useState(false);
+
+  const onSubmit = (data: any) => {
+    setTriedSubmit(false);
+    alert("¡Formulario enviado!\n" + JSON.stringify(data, null, 2));
+    reset();
+  };
+
+  const onError = () => {
+    setTriedSubmit(true);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#18182a] py-10">
+      <form
+        onSubmit={handleSubmit(onSubmit, onError)}
+        className="bg-white dark:bg-[#232347] rounded-xl shadow-lg max-w-md w-full px-6 py-8 space-y-6 animate-fade-in"
+        autoComplete="off"
+      >
+        <h1 className="text-2xl font-bold mb-4 text-center">
+          Publicar mi campo
+        </h1>
+
+        {triedSubmit && !isValid && (
+          <div className="bg-red-100 text-red-700 px-4 py-2 rounded text-center font-medium mb-2">
+            Por favor, complete todos los campos obligatorios.
+          </div>
+        )}
+
+        {/* Nombre y Apellido */}
+        <div>
+          <label className="block font-medium mb-1">
+            Nombre y Apellido <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("nombre")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            placeholder="Nombre y Apellido"
+          />
+          {errors.nombre && (
+            <p className="text-red-500 text-sm mt-1">{errors.nombre.message}</p>
+          )}
+        </div>
+
+        {/* Email */}
+        <div>
+          <label className="block font-medium mb-1">
+            Email <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("email")}
+            type="email"
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            placeholder="ejemplo@correo.com"
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+          )}
+        </div>
+
+        {/* Eres */}
+        <div>
+          <label className="block font-medium mb-1">
+            Eres <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register("eres")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            defaultValue=""
+          >
+            <option value="">Seleccione una opción</option>
+            <option value="Propietario">Propietario</option>
+            <option value="Inmobiliaria">Inmobiliaria</option>
+            <option value="Vendedor">Vendedor</option>
+          </select>
+          {errors.eres && (
+            <p className="text-red-500 text-sm mt-1">{errors.eres.message}</p>
+          )}
+        </div>
+
+        {/* Ubicación del campo */}
+        <div>
+          <label className="block font-medium mb-1">
+            Ubicación del campo <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("ubicacion")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            placeholder="Ej: Partido de..."
+          />
+          {errors.ubicacion && (
+            <p className="text-red-500 text-sm mt-1">{errors.ubicacion.message}</p>
+          )}
+        </div>
+
+        {/* Superficie total */}
+        <div>
+          <label className="block font-medium mb-1">
+            Superficie total (en hectáreas) <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("superficie")}
+            type="number"
+            min={1}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            placeholder="Ej: 150"
+          />
+          {errors.superficie && (
+            <p className="text-red-500 text-sm mt-1">{errors.superficie.message}</p>
+          )}
+        </div>
+
+        {/* Tipo de campo */}
+        <div>
+          <label className="block font-medium mb-1">
+            Tipo de campo <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register("tipoCampo")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            defaultValue=""
+          >
+            <option value="">Seleccione una opción</option>
+            <option value="Agricola">Agricola</option>
+            <option value="Ganadero">Ganadero</option>
+            <option value="Mixto">Mixto</option>
+            <option value="Turistico / Recreativo">Turistico / Recreativo</option>
+            <option value="Otro">Otro</option>
+          </select>
+          {errors.tipoCampo && (
+            <p className="text-red-500 text-sm mt-1">{errors.tipoCampo.message}</p>
+          )}
+        </div>
+
+        {/* Precio estimado por hectárea */}
+        <div>
+          <label className="block font-medium mb-1">
+            Precio estimado por hectárea (en USD) <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("precio")}
+            type="number"
+            min={0}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            placeholder="Ej: 2500"
+          />
+          {errors.precio && (
+            <p className="text-red-500 text-sm mt-1">{errors.precio.message}</p>
+          )}
+        </div>
+
+        {/* ¿Qué características querés destacar? */}
+        <div>
+          <label className="block font-medium mb-1">
+            ¿Qué características querés destacar? <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("caracteristicas")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            placeholder="Ej: Acceso asfaltado, casa principal, galpón, etc."
+          />
+          {errors.caracteristicas && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.caracteristicas.message}
+            </p>
+          )}
+        </div>
+
+        {/* ¿Tenés escritura o documentación lista? */}
+        <div>
+          <label className="block font-medium mb-1">
+            ¿Tenés escritura o documentación lista? <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register("documentacion")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            defaultValue=""
+          >
+            <option value="">Seleccione una opción</option>
+            <option value="Si">Si</option>
+            <option value="En tramite">En trámite</option>
+            <option value="No">No</option>
+          </select>
+          {errors.documentacion && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.documentacion.message}
+            </p>
+          )}
+        </div>
+
+        {/* ¿Tenés fotos o videos del campo? */}
+        <div>
+          <label className="block font-medium mb-1">
+            ¿Tenés fotos o videos del campo? <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register("fotosVideos")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            defaultValue=""
+          >
+            <option value="">Seleccione una opción</option>
+            <option value="Si, ya tengo">Si, ya tengo</option>
+            <option value="No, necesito ayuda para crearlos">
+              No, necesito ayuda para crearlos
+            </option>
+            <option value="Tengo, pero quiero mejorarlos">
+              Tengo, pero quiero mejorarlos
+            </option>
+          </select>
+          {errors.fotosVideos && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.fotosVideos.message}
+            </p>
+          )}
+        </div>
+
+        {/* ¿Estás dispuesto a que se publique el campo en redes sociales? */}
+        <div>
+          <label className="block font-medium mb-1">
+            ¿Estás dispuesto a que se publique el campo en redes sociales? <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register("publicarRedes")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            defaultValue=""
+          >
+            <option value="">Seleccione una opción</option>
+            <option value="Si, con ubicacion aproximada">
+              Si, con ubicación aproximada
+            </option>
+            <option value="Si, con detalles completos">
+              Si, con detalles completos
+            </option>
+            <option value="No, solo para contactos privados">
+              No, solo para contactos privados
+            </option>
+          </select>
+          {errors.publicarRedes && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.publicarRedes.message}
+            </p>
+          )}
+        </div>
+
+        {/* Teléfono / WhatsApp */}
+        <div>
+          <label className="block font-medium mb-1">
+            Teléfono / WhatsApp <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("telefono")}
+            type="tel"
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
+            placeholder="Ej: 11 2345 6789"
+          />
+          {errors.telefono && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.telefono.message}
+            </p>
+          )}
+        </div>
+
+        {/* Comentarios */}
+        <div>
+          <label className="block font-medium mb-1">
+            Comentarios o algo que quieras agregar
+          </label>
+          <textarea
+            {...register("comentarios")}
+            className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a] resize-none"
+            rows={3}
+            placeholder="Opcional"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="
+            w-full py-2 rounded-lg font-semibold shadow bg-gradient-to-r
+            from-blue-600 via-indigo-600 to-purple-600 text-white
+            hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600
+            transition-all duration-200 active:scale-95
+          "
+        >
+          Enviar consulta
+        </button>
+      </form>
+    </div>
+  );
+}

@@ -1,122 +1,84 @@
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Thumbs } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/thumbs";
+// PropertyGallery.tsx
+
 import { useState } from "react";
+import { LightboxModal } from "./LightboxModal";
+import { getAssetUrl } from "../utils/getAssetUrl";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-
-interface PropertyGalleryProps {
+interface Props {
   images: string[];
   videos: string[];
 }
 
-function getAssetUrl(url: string) {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  return `${API_URL}${url}`;
-}
-
-export function PropertyGallery({
-  images = [],
-  videos = [],
-}: PropertyGalleryProps) {
-  // Combinar y mapear con assetUrl
+export function PropertyGallery({ images, videos }: Props) {
+  // Construir lista de media combinada: [{type: "image", url}, ...]
   const media = [
-    ...images.filter(Boolean).map((src) => ({
-      type: "image" as const,
-      src: getAssetUrl(src),
-    })),
-    ...videos.filter(Boolean).map((src) => ({
-      type: "video" as const,
-      src: getAssetUrl(src),
-    })),
+    ...images.map((url) => ({ type: "image" as const, url })),
+    ...videos.map((url) => ({ type: "video" as const, url })),
   ];
-
-  const [thumbsSwiper, setThumbsSwiper] = useState<any>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   if (media.length === 0) return null;
 
   return (
-    <div className="w-full max-w-3xl mx-auto mb-8">
-      {/* GALERÍA PRINCIPAL */}
-      <Swiper
-        modules={[Navigation, Thumbs]}
-        navigation
-        thumbs={{
-          swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null,
-        }}
-        className="rounded-xl shadow-lg gallery-main"
-        style={{ "--swiper-navigation-color": "#fff" } as any}
+    <div className="w-full flex flex-col items-center space-y-4">
+      {/* Preview principal */}
+      <div
+        className="w-full flex justify-center items-center cursor-zoom-in group"
+        onClick={() => setLightboxOpen(true)}
+        tabIndex={0}
+        aria-label="Abrir galería"
       >
-        {media.map((item, idx) => (
-          <SwiperSlide key={idx}>
-            <div className="w-full aspect-video bg-gray-100 dark:bg-[#292945] flex items-center justify-center rounded-xl overflow-hidden">
-              {item.type === "image" ? (
-                <img
-                  src={item.src}
-                  alt={`Imagen ${idx + 1}`}
-                  className="w-full h-full object-cover"
-                  draggable={false}
-                  loading="lazy"
-                />
-              ) : (
-                <video
-                  src={item.src}
-                  controls
-                  className="w-full h-full object-cover bg-black"
-                  style={{ background: "#111" }}
-                />
-              )}
-            </div>
-          </SwiperSlide>
+        {media[lightboxIndex].type === "image" ? (
+          <img
+            src={getAssetUrl(media[lightboxIndex].url)}
+            alt={`Vista ${lightboxIndex + 1}`}
+            className="rounded-lg shadow-lg max-w-full max-h-[420px] object-contain group-hover:opacity-90 transition"
+          />
+        ) : (
+          <video
+            src={getAssetUrl(media[lightboxIndex].url)}
+            controls
+            className="rounded-lg shadow-lg max-w-full max-h-[420px] object-contain group-hover:opacity-90 transition bg-black"
+          />
+        )}
+      </div>
+      {/* Miniaturas */}
+      <div className="flex gap-2 overflow-x-auto w-full justify-center">
+        {media.map((m, i) => (
+          <button
+            key={i}
+            className={`border-2 rounded-lg p-1 ${
+              i === lightboxIndex ? "border-primary" : "border-transparent"
+            } bg-white/80 dark:bg-black/60`}
+            onClick={() => setLightboxIndex(i)}
+            aria-label={`Seleccionar vista ${i + 1}`}
+            tabIndex={0}
+          >
+            {m.type === "image" ? (
+              <img
+                src={getAssetUrl(m.url)}
+                alt={`Miniatura ${i + 1}`}
+                className="w-16 h-16 object-cover rounded-md"
+              />
+            ) : (
+              <video
+                src={getAssetUrl(m.url)}
+                className="w-16 h-16 object-cover rounded-md bg-black"
+              />
+            )}
+          </button>
         ))}
-      </Swiper>
-
-      {/* MINIATURAS */}
-      {media.length > 1 && (
-        <Swiper
-          modules={[Thumbs]}
-          onSwiper={setThumbsSwiper}
-          slidesPerView={Math.min(media.length, 5)}
-          spaceBetween={8}
-          watchSlidesProgress
-          className="mt-4 gallery-thumbs"
-        >
-          {media.map((item, i) => (
-            <SwiperSlide key={i} className="!w-auto">
-              <div
-                className="rounded-lg border border-gray-200 dark:border-[#393964] aspect-video overflow-hidden"
-                style={{
-                  width: 70,
-                  height: 50,
-                  minWidth: 70,
-                  minHeight: 50,
-                  background: "#111",
-                }}
-              >
-                {item.type === "image" ? (
-                  <img
-                    src={item.src}
-                    alt=""
-                    className="object-cover w-full h-full"
-                    draggable={false}
-                    loading="lazy"
-                  />
-                ) : (
-                  <video
-                    src={item.src}
-                    className="object-cover w-full h-full"
-                    muted
-                    preload="metadata"
-                    style={{ pointerEvents: "none" }}
-                  />
-                )}
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
+      </div>
+      {/* Modal Lightbox */}
+      {lightboxOpen && (
+        <LightboxModal
+          media={media}
+          initialIndex={lightboxIndex}
+          currentIndex={lightboxIndex}
+          setCurrentIndex={setLightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+        />
       )}
     </div>
   );

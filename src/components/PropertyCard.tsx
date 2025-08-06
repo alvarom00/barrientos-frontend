@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { getAssetUrl } from "../utils/getAssetUrl";
 
 export interface IProperty {
   _id: string;
@@ -27,11 +26,6 @@ export interface IProperty {
   extras: string[];
 }
 
-function getAssetUrl(url: string) {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  return `${API_URL}${url}`;
-}
 
 export default function PropertyCard({ property }: { property: IProperty }) {
   const firstImage = property.imageUrls?.find(Boolean);
