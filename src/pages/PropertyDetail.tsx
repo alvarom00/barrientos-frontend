@@ -5,6 +5,9 @@ import L from "leaflet";
 import { Check } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { PropertyGallery } from "../components/PropertyGallery";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 interface IProperty {
   _id: string;
@@ -30,23 +33,110 @@ interface IProperty {
   extras: string[];
 }
 
+const schema = yup.object().shape({
+  nombre: yup.string().required("El nombre es obligatorio"),
+  email: yup
+    .string()
+    .email("Email inválido")
+    .required("El email es obligatorio"),
+  telefono: yup
+    .string()
+    .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
+    .required("El teléfono es obligatorio"),
+  mensaje: yup.string().required("El mensaje es obligatorio"),
+});
+
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const [property, setProperty] = useState<IProperty | null>(null);
+  const [propertyLoading, setPropertyLoading] = useState(true);
+  const [formLoading, setFormLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      nombre: "",
+      email: "",
+      telefono: "",
+      mensaje: "",
+    },
+  });
 
   useEffect(() => {
+    if (property) {
+      reset({
+        nombre: "",
+        email: "",
+        telefono: "",
+        mensaje: `Me interesa este campo y quiero obtener más información.\n\nREF: ${property.ref} - ${property.title}`,
+      });
+    }
+  }, [property, reset]);
+
+  useEffect(() => {
+    setPropertyLoading(true);
+    if (!id) return;
     fetch(`http://localhost:3000/api/properties/${id}`)
-      .then((r) => r.json())
-      .then(setProperty)
-      .catch(console.error);
+      .then((res) => res.json())
+      .then((data) => {
+        setProperty(data);
+        setPropertyLoading(false);
+      })
+      .catch(() => setPropertyLoading(false));
   }, [id]);
+
+  if (propertyLoading) {
+    return <p className="p-8">Cargando propiedad…</p>;
+  }
+
+  if (!property) {
+    return <p className="p-8 text-red-600">No se encontró la propiedad.</p>;
+  }
+
+  async function onSubmit(data: any) {
+    setMsg(null);
+    setFormLoading(true);
+    try {
+      const res = await fetch("http://localhost:3000/api/contact-property", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          ref: property?.ref,
+          titulo: property?.title,
+          url: window.location.href,
+        }),
+      });
+      if (res.ok) {
+        setMsg("¡Consulta enviada correctamente! Pronto nos contactaremos.");
+        reset({
+          nombre: "",
+          email: "",
+          telefono: "",
+          mensaje: `Me interesa este campo y quiero obtener más información.\n\nREF: ${property?.ref} - ${property?.title}`,
+        });
+      } else {
+        setMsg("Ocurrió un error. Intente de nuevo.");
+      }
+    } catch (err) {
+      setMsg("Ocurrió un error al enviar la consulta.");
+    } finally {
+      setFormLoading(false);
+    }
+  }
 
   if (!property) {
     return <p className="p-8">Cargando propiedad…</p>;
   }
 
   const pos: [number, number] = [property.lat ?? 0, property.lng ?? 0];
-  
+
   return (
     <div className="max-w-5xl mx-auto p-2 md:p-8 space-y-10 animate-fade-in">
       {/* HEADER: Título, Ref, Precio, Tipo de operación */}
@@ -239,31 +329,92 @@ export default function PropertyDetail() {
       {/* CONTACTO */}
       <section className="max-w-lg mx-auto mt-12 bg-gray-100 dark:bg-[#2e2e48] rounded-xl p-6 shadow">
         <h2 className="text-2xl font-bold mb-4">Contacto</h2>
-        <form className="space-y-4">
-          <input
-            type="text"
-            placeholder="Tu nombre"
-            required
-            className="w-full p-2 border rounded"
-          />
-          <input
-            type="email"
-            placeholder="Tu email"
-            required
-            className="w-full p-2 border rounded"
-          />
-          <textarea
-            rows={5}
-            required
-            className="w-full p-2 border rounded"
-            defaultValue={`REF: ${property.ref} - ${property.title}`}
-          />
+        <form
+          className="space-y-4"
+          onSubmit={handleSubmit(onSubmit)}
+          autoComplete="off"
+        >
+          <div>
+            <input
+              {...register("nombre")}
+              placeholder="Tu nombre"
+              className="w-full p-2 border rounded"
+              disabled={propertyLoading}
+            />
+            {errors.nombre && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.nombre.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <input
+              {...register("email")}
+              placeholder="Tu email"
+              className="w-full p-2 border rounded"
+              disabled={propertyLoading}
+            />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.email.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <input
+              {...register("telefono")}
+              placeholder="Teléfono / WhatsApp"
+              className="w-full p-2 border rounded"
+              disabled={propertyLoading}
+              onInput={(e) => {
+                // @ts-ignore
+                e.target.value = e.target.value.replace(/\D/g, "");
+              }}
+            />
+            {errors.telefono && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.telefono.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <textarea
+              {...register("mensaje")}
+              rows={5}
+              className="w-full p-2 border rounded"
+              disabled={propertyLoading}
+              placeholder="Escribe tu mensaje"
+            />
+            {errors.mensaje && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.mensaje.message}
+              </p>
+            )}
+          </div>
           <button
             type="submit"
-            className="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded font-semibold transition"
+            className="
+              w-full py-2 rounded-lg font-semibold shadow bg-gradient-to-r
+              from-blue-600 via-indigo-600 to-purple-600 text-white
+              hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600
+              transition-all duration-200 active:scale-95
+            "
+            disabled={formLoading}
           >
-            Enviar
+            {formLoading ? "Enviando..." : "Enviar"}
           </button>
+
+          {msg && (
+            <div
+              className={`mt-3 text-center font-semibold ${
+                msg.includes("correctamente")
+                  ? "text-green-700"
+                  : "text-red-600"
+              }`}
+            >
+              {msg}
+            </div>
+          )}
         </form>
       </section>
     </div>

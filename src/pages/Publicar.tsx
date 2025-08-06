@@ -22,13 +22,7 @@ const schema = yup.object().shape({
   tipoCampo: yup
     .string()
     .oneOf(
-      [
-        "Agricola",
-        "Ganadero",
-        "Mixto",
-        "Turistico / Recreativo",
-        "Otro",
-      ],
+      ["Agricola", "Ganadero", "Mixto", "Turistico / Recreativo", "Otro"],
       "Seleccione un tipo de campo"
     )
     .required("Este campo es obligatorio"),
@@ -36,16 +30,12 @@ const schema = yup.object().shape({
     .number()
     .typeError("Ingrese solo números")
     .min(0, "El precio no puede ser negativo")
-    .required("El precio estimado es obligatorio"),
-  caracteristicas: yup
-    .string()
-    .required("Por favor, indique características a destacar"),
+    .nullable()
+    .transform((value, originalValue) => (originalValue === "" ? null : value)),
+  caracteristicas: yup.string(),
   documentacion: yup
     .string()
-    .oneOf(
-      ["Si", "En tramite", "No"],
-      "Seleccione una opción"
-    )
+    .oneOf(["Si", "En tramite", "No"], "Seleccione una opción")
     .required("Este campo es obligatorio"),
   fotosVideos: yup
     .string()
@@ -86,17 +76,36 @@ export default function Publicar() {
     resolver: yupResolver(schema),
     mode: "onBlur",
   });
+
   const [triedSubmit, setTriedSubmit] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     setTriedSubmit(false);
-    alert("¡Formulario enviado!\n" + JSON.stringify(data, null, 2));
-    reset();
+    setSuccess(null);
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:3000/api/publicar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("No se pudo enviar el formulario");
+      setSuccess(
+        "¡Formulario enviado correctamente! Pronto nos pondremos en contacto."
+      );
+      reset();
+    } catch (e) {
+      setError("Ocurrió un error al enviar el formulario. Intente de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onError = () => {
-    setTriedSubmit(true);
-  };
+  const onError = () => setTriedSubmit(true);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#18182a] py-10">
@@ -177,14 +186,17 @@ export default function Publicar() {
             placeholder="Ej: Partido de..."
           />
           {errors.ubicacion && (
-            <p className="text-red-500 text-sm mt-1">{errors.ubicacion.message}</p>
+            <p className="text-red-500 text-sm mt-1">
+              {errors.ubicacion.message}
+            </p>
           )}
         </div>
 
         {/* Superficie total */}
         <div>
           <label className="block font-medium mb-1">
-            Superficie total (en hectáreas) <span className="text-red-500">*</span>
+            Superficie total (en hectáreas){" "}
+            <span className="text-red-500">*</span>
           </label>
           <input
             {...register("superficie")}
@@ -194,7 +206,9 @@ export default function Publicar() {
             placeholder="Ej: 150"
           />
           {errors.superficie && (
-            <p className="text-red-500 text-sm mt-1">{errors.superficie.message}</p>
+            <p className="text-red-500 text-sm mt-1">
+              {errors.superficie.message}
+            </p>
           )}
         </div>
 
@@ -212,18 +226,22 @@ export default function Publicar() {
             <option value="Agricola">Agricola</option>
             <option value="Ganadero">Ganadero</option>
             <option value="Mixto">Mixto</option>
-            <option value="Turistico / Recreativo">Turistico / Recreativo</option>
+            <option value="Turistico / Recreativo">
+              Turistico / Recreativo
+            </option>
             <option value="Otro">Otro</option>
           </select>
           {errors.tipoCampo && (
-            <p className="text-red-500 text-sm mt-1">{errors.tipoCampo.message}</p>
+            <p className="text-red-500 text-sm mt-1">
+              {errors.tipoCampo.message}
+            </p>
           )}
         </div>
 
         {/* Precio estimado por hectárea */}
         <div>
           <label className="block font-medium mb-1">
-            Precio estimado por hectárea (en USD) <span className="text-red-500">*</span>
+            Precio estimado por hectárea (en USD){" "}
           </label>
           <input
             {...register("precio")}
@@ -240,7 +258,7 @@ export default function Publicar() {
         {/* ¿Qué características querés destacar? */}
         <div>
           <label className="block font-medium mb-1">
-            ¿Qué características querés destacar? <span className="text-red-500">*</span>
+            ¿Qué características querés destacar?{" "}
           </label>
           <input
             {...register("caracteristicas")}
@@ -257,7 +275,8 @@ export default function Publicar() {
         {/* ¿Tenés escritura o documentación lista? */}
         <div>
           <label className="block font-medium mb-1">
-            ¿Tenés escritura o documentación lista? <span className="text-red-500">*</span>
+            ¿Tenés escritura o documentación lista?{" "}
+            <span className="text-red-500">*</span>
           </label>
           <select
             {...register("documentacion")}
@@ -279,7 +298,8 @@ export default function Publicar() {
         {/* ¿Tenés fotos o videos del campo? */}
         <div>
           <label className="block font-medium mb-1">
-            ¿Tenés fotos o videos del campo? <span className="text-red-500">*</span>
+            ¿Tenés fotos o videos del campo?{" "}
+            <span className="text-red-500">*</span>
           </label>
           <select
             {...register("fotosVideos")}
@@ -305,7 +325,8 @@ export default function Publicar() {
         {/* ¿Estás dispuesto a que se publique el campo en redes sociales? */}
         <div>
           <label className="block font-medium mb-1">
-            ¿Estás dispuesto a que se publique el campo en redes sociales? <span className="text-red-500">*</span>
+            ¿Estás dispuesto a que se publique el campo en redes sociales?{" "}
+            <span className="text-red-500">*</span>
           </label>
           <select
             {...register("publicarRedes")}
@@ -340,6 +361,10 @@ export default function Publicar() {
             type="tel"
             className="w-full p-2 border rounded bg-gray-50 dark:bg-[#18182a]"
             placeholder="Ej: 11 2345 6789"
+            onInput={(e) => {
+                // @ts-ignore
+                e.target.value = e.target.value.replace(/\D/g, "");
+              }}
           />
           {errors.telefono && (
             <p className="text-red-500 text-sm mt-1">
@@ -369,9 +394,21 @@ export default function Publicar() {
             hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600
             transition-all duration-200 active:scale-95
           "
+          disabled={loading}
         >
-          Enviar consulta
+          {loading ? "Enviando..." : "Enviar consulta"}
         </button>
+
+        {success && (
+          <div className="bg-green-100 text-green-700 px-4 py-2 rounded text-center font-medium mb-2">
+            {success}
+          </div>
+        )}
+        {error && (
+          <div className="bg-red-100 text-red-700 px-4 py-2 rounded text-center font-medium mb-2">
+            {error}
+          </div>
+        )}
       </form>
     </div>
   );
