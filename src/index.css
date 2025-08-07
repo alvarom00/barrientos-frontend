@@ -25,3 +25,61 @@
     @apply max-w-4xl mx-auto px-4;
   }
 }
+
+.campo-bg-stage {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 1536px;
+  height: 1024px;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.campo-bg-img {
+  position: absolute;
+  left: 0; top: 0;
+  width: 1536px;
+  height: 1024px;
+  z-index: 1;
+  user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.campo-aspas-img {
+  position: absolute;
+  left: 522px;  /* centro del molino */
+  top: 525px;
+  width: 500px;
+  height: 500px;
+  margin-left: -345px;  /* para centrar la aspa en ese punto */
+  margin-top: -500px;
+  z-index: 2;
+  pointer-events: none;
+  animation: girar-aspas 8s linear infinite;
+  opacity: 0.95;
+}
+@keyframes girar-aspas { 100% { transform: rotate(360deg);} }
+
+body {
+  background: #201d2b; /* Color oscuro para que los bordes no se noten */
+  margin: 0;           /* Quita margen por defecto */
+  min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;  /* Evita barras de scroll horizontal */
+}
+
+@media (max-width: 600px) {
+  .campo-bg-stage {
+    left: 50%;
+    top: 50%;
+    /* En desktop: translate(-50%, -50%)
+       En mobile:  x=522 (molino) centrado -> translateX(calc(-522px + 50vw)) */
+    transform: translate(calc(-522px + 50vw), -50%);
+    width: 1536px;
+    height: 1024px;
+  }
+}

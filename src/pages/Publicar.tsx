@@ -108,7 +108,7 @@ export default function Publicar() {
   const onError = () => setTriedSubmit(true);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#18182a] py-10">
+    <div className="min-h-screen flex items-center justify-center py-10">
       <form
         onSubmit={handleSubmit(onSubmit, onError)}
         className="bg-white dark:bg-[#232347] rounded-xl shadow-lg max-w-md w-full px-6 py-8 space-y-6 animate-fade-in"
