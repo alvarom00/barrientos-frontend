@@ -8,7 +8,7 @@ interface CamposProps {
 }
 
 const stagger = 0.1;
-
+const API = import.meta.env.VITE_API_URL;
 const PAGE_SIZE = 6;
 
 const gridVariants = {
@@ -46,7 +46,7 @@ export default function Campos({ operationType }: CamposProps) {
     params.append("pageSize", PAGE_SIZE.toString());
     if (operationType) params.append("operationType", operationType);
 
-    fetch(`http://localhost:3000/api/properties?${params}`)
+    fetch(`${API}/properties?${params}`)
       .then((res) => res.json())
       .then((data) => {
         setProperties(data.properties ?? []);

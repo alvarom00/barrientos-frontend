@@ -10,6 +10,7 @@ interface Property {
 }
 
 const PAGE_SIZE = 8; // O el número que prefieras
+const API = import.meta.env.VITE_API_URL;
 
 const AdminDashboard = () => {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -27,7 +28,7 @@ const AdminDashboard = () => {
     params.append("pageSize", PAGE_SIZE.toString());
     if (search) params.append("search", search);
 
-    fetch(`http://localhost:3000/api/properties?${params}`)
+    fetch(`${API}/properties?${params}`)
       .then((res) => res.json())
       .then((data) => {
         setProperties(data.properties ?? []);
@@ -55,7 +56,7 @@ const AdminDashboard = () => {
     if (!confirm) return;
 
     try {
-      await fetch(`http://localhost:3000/api/properties/${id}`, {
+      await fetch(`${API}/properties/${id}`, {
         method: "DELETE",
       });
       // Actualizar la lista, incluso si borra el último elemento de la página actual

@@ -27,7 +27,8 @@ export default function ResetPassword() {
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get("token"); // <-- necesario
+  const token = searchParams.get("token");
+  const API = import.meta.env.VITE_API_URL;
 
   const {
     register,
@@ -45,10 +46,9 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/api/auth/reset-password", {
+      const res = await fetch(`${API}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // El backend espera { token, password } (como en tu versión previa)
         body: JSON.stringify({ token, password: data.password }),
       });
 

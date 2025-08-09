@@ -52,6 +52,7 @@ export default function PropertyDetail() {
   const [propertyLoading, setPropertyLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const API = import.meta.env.VITE_API_URL;
 
   const {
     register,
@@ -82,7 +83,7 @@ export default function PropertyDetail() {
   useEffect(() => {
     setPropertyLoading(true);
     if (!id) return;
-    fetch(`http://localhost:3000/api/properties/${id}`)
+    fetch(`${API}/properties/${id}`)
       .then((res) => res.json())
       .then((data) => {
         setProperty(data);
@@ -103,7 +104,7 @@ export default function PropertyDetail() {
     setMsg(null);
     setFormLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/api/contact-property", {
+      const res = await fetch(`${API}/contact-property`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -9,6 +9,8 @@ type LoginForm = {
   password: string;
 };
 
+const API = import.meta.env.VITE_API_URL;
+
 const schema = yup.object({
   email: yup
     .string()
@@ -36,7 +38,7 @@ export default function Login() {
   const onSubmit = async (values: LoginForm) => {
     setServerError(null);
     try {
-      const res = await fetch("http://localhost:3000/api/auth/login", {
+      const res = await fetch(`${API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),

@@ -19,7 +19,7 @@ export default function PropertyFormRH() {
   const [existingVideos, setExistingVideos] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const API_URL = import.meta.env.VITE_API_URL;
   const {
     register,
     control,
@@ -79,6 +79,7 @@ export default function PropertyFormRH() {
   const extras = watch("extras") ?? [];
   const lat = watch("lat");
   const lng = watch("lng");
+  const API = import.meta.env.VITE_API_URL;
 
   const hasVivienda = extras.includes("Vivienda");
 
@@ -120,7 +121,7 @@ export default function PropertyFormRH() {
 
   useEffect(() => {
     if (id) {
-      fetch(`http://localhost:3000/api/properties/${id}`)
+      fetch(`${API}/properties/${id}`)
         .then((res) => res.json())
         .then((data) => {
           setExistingImages(data.imageUrls || []);
@@ -258,8 +259,8 @@ export default function PropertyFormRH() {
 
     const isEdit = Boolean(id);
     const url = isEdit
-      ? `http://localhost:3000/api/properties/${id}`
-      : "http://localhost:3000/api/properties";
+      ? `${API}/properties/${id}`
+      : `${API}/properties`;
 
     try {
       const res = await fetch(url, {

@@ -85,6 +85,7 @@ export default function Publicar() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const API = import.meta.env.VITE_API_URL;
 
   const onSubmit = async (data: any) => {
     setTriedSubmit(false);
@@ -92,7 +93,7 @@ export default function Publicar() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/api/publicar", {
+      const res = await fetch(`${API}/publicar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
