@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface Property {
   _id: string;
@@ -21,25 +21,32 @@ const AdminDashboard = () => {
 
   // Fetch paginated properties
   useEffect(() => {
-  setLoading(true);
-  const params = new URLSearchParams();
-  params.append("page", currentPage.toString());
-  params.append("pageSize", PAGE_SIZE.toString());
-  if (search) params.append("search", search);
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.append("page", currentPage.toString());
+    params.append("pageSize", PAGE_SIZE.toString());
+    if (search) params.append("search", search);
 
-  fetch(`http://localhost:3000/api/properties?${params}`)
-    .then((res) => res.json())
-    .then((data) => {
-      setProperties(data.properties ?? []);
-      setTotal(data.total ?? 0);
-    })
-    .catch((err) => {
-      setProperties([]);
-      setTotal(0);
-      console.error("Error fetching properties:", err);
-    })
-    .finally(() => setLoading(false));
-}, [currentPage, search]);
+    fetch(`http://localhost:3000/api/properties?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setProperties(data.properties ?? []);
+        setTotal(data.total ?? 0);
+      })
+      .catch((err) => {
+        setProperties([]);
+        setTotal(0);
+        console.error("Error fetching properties:", err);
+      })
+      .finally(() => setLoading(false));
+  }, [currentPage, search]);
+
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/admin/login");
+  };
 
   const handleDelete = async (id: string) => {
     const confirm = window.confirm(
@@ -67,126 +74,158 @@ const AdminDashboard = () => {
   const end = Math.min(currentPage * PAGE_SIZE, total);
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Panel de administrador</h1>
-      <Link
-        to="/admin/create"
-        className="inline-block mb-4 bg-green-600 text-white px-4 py-2 rounded"
+    <div className="max-w-5xl mx-auto px-2 sm:px-4 py-8">
+      <div
+        className="w-full max-w-full bg-crema rounded-2xl shadow-xl p-4 sm:p-8
+                 border border-[#ebdbb9] text-[#514737] animate-fade-in
+                 text-sm sm:text-base"
       >
-        + Crear publicación
-      </Link>
-
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setCurrentPage(1);
-          }}
-          placeholder="Buscar por referencia, título o ubicación..."
-          className="w-full sm:w-96 px-3 py-2 border rounded focus:outline-none"
-        />
-      </div>
-
-      {/* Info paginado */}
-      <div className="mb-2 text-sm text-neutral-600 dark:text-neutral-300">
-        {total > 0
-          ? `Mostrando ${start}–${end} de ${total} propiedades`
-          : loading
-          ? "Cargando..."
-          : "No se encontraron propiedades"}
-      </div>
-
-      {/* Tabla */}
-      <div className="overflow-x-auto w-full">
-        {loading ? (
-          <div className="flex justify-center items-center h-24 text-primary">
-            Cargando...
+        {/* Título + CTA */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h1 className="text-lg sm:text-2xl font-bold">
+            Panel de administrador
+          </h1>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/admin/create"
+              className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition text-sm"
+            >
+              + Crear propiedad
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-2 rounded btn-red text-white hover:scale-[1.02] active:scale-95 transition text-sm"
+              type="button"
+            >
+              Cerrar sesión
+            </button>
           </div>
-        ) : (
-          <table className="min-w-full w-full border-collapse">
+        </div>
+
+        {/* Buscador */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="Buscar por referencia, título o ubicación..."
+            className="w-full sm:w-96 px-3 py-2 rounded bg-[#fcf7ea]/90 text-[#594317] border border-[#ebdbb9] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition text-sm"
+          />
+        </div>
+
+        {/* Info paginado */}
+        <div className="mb-3 text-sm text-[#6b5432]">
+          {total > 0
+            ? `Mostrando ${start}–${end} de ${total} propiedades`
+            : loading
+            ? "Cargando..."
+            : "No se encontraron propiedades"}
+        </div>
+
+        {/* TABLA — SOLO esto scrollea en X */}
+        <div className="relative w-full overflow-x-auto touch-pan-x overscroll-x-contain pr-3">
+          <table className="min-w-[720px] table-fixed text-xs sm:text-sm">
             <thead>
-              <tr className="bg-gray-200 dark:bg-[#202040]">
-                <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+              <tr className="bg-[#f7edd0] text-[#594317]">
+                {/* suma exacta 100% para no empujar el card */}
+                <th className="px-3 py-2 text-left font-semibold border border-[#ebdbb9] w-2/5">
                   Título
                 </th>
-                <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+                <th className="px-3 py-2 text-left font-semibold border border-[#ebdbb9] w-1/6">
                   Precio
                 </th>
-                <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+                <th className="px-3 py-2 text-left font-semibold border border-[#ebdbb9] w-1/4">
                   Ubicación
                 </th>
-                <th className="px-4 py-2 text-gray-900 dark:text-white font-semibold">
+                <th className="px-3 py-2 text-left font-semibold border border-[#ebdbb9] w-1/6">
                   Acciones
                 </th>
               </tr>
             </thead>
             <tbody>
-              {properties.map((property) => (
-                <tr key={property._id}>
-                  <td className="border p-2">{property.title}</td>
-                  <td className="border p-2">
-                    {property.operationType === "Arrendamiento"
+              {properties.map((p) => (
+                <tr key={p._id} className="bg-[#fcf7ea]/70 align-top">
+                  <td
+                    className="border border-[#ebdbb9] p-2 truncate max-w-[12rem] overflow-hidden whitespace-nowrap"
+                    title={p.title}
+                  >
+                    {p.title}
+                  </td>
+                  <td className="border border-[#ebdbb9] p-2">
+                    {p.operationType === "Arrendamiento"
                       ? "A acordar"
-                      : property.price
-                      ? `$${property.price.toLocaleString()}`
+                      : p.price
+                      ? `$${p.price.toLocaleString()}`
                       : "Sin precio"}
                   </td>
-                  <td className="border p-2">{property.location}</td>
-                  <td className="border p-2 flex gap-2">
-                    <Link
-                      to={`/admin/edit/${property._id}`}
-                      className="bg-blue-500 text-white px-2 py-1 rounded"
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(property._id)}
-                      className="bg-red-500 text-white px-2 py-1 rounded"
-                    >
-                      Borrar
-                    </button>
+                  <td
+                    className="border border-[#ebdbb9] p-2 truncate max-w-[10rem] overflow-hidden whitespace-nowrap"
+                    title={p.location}
+                  >
+                    {p.location}
+                  </td>
+                  <td className="border border-[#ebdbb9] p-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        to={`/admin/edit/${p._id}`}
+                        className="px-2 py-1 rounded bg-[#4da6ff] text-white hover:bg-[#3399ff] transition"
+                      >
+                        Editar
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(p._id)}
+                        className="px-2 py-1 rounded text-white transition btn-red"
+                      >
+                        Borrar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Paginado */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-8 gap-2 flex-wrap">
+            <button
+              className="px-3 py-1 rounded bg-[#ffe8ad] text-[#594317] font-bold disabled:opacity-40"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+            >
+              &lt;
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => {
+              const isActive = currentPage === i + 1;
+              return (
+                <button
+                  key={i}
+                  disabled={isActive}
+                  className={`px-3 py-1 rounded font-bold transition ${
+                    isActive
+                      ? "bg-primary text-[#6B5432] opacity-60"
+                      : "bg-primary/10 text-primary hover:bg-primary/20"
+                  }`}
+                  onClick={() => !isActive && setCurrentPage(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+            <button
+              className="px-3 py-1 rounded bg-[#ffe8ad] text-[#594317] font-bold disabled:opacity-40"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+            >
+              &gt;
+            </button>
+          </div>
         )}
       </div>
-
-      {/* Paginado */}
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-8 gap-2">
-          <button
-            className="px-3 py-1 rounded bg-primary/20 text-primary font-bold disabled:opacity-40"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((prev) => prev - 1)}
-          >
-            &lt;
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i}
-              className={`px-3 py-1 rounded ${
-                currentPage === i + 1
-                  ? "bg-primary text-primary-foreground font-bold"
-                  : "bg-primary/10 text-primary hover:bg-primary/20"
-              }`}
-              onClick={() => setCurrentPage(i + 1)}
-            >
-              {i + 1}
-            </button>
-          ))}
-          <button
-            className="px-3 py-1 rounded bg-primary/20 text-primary font-bold disabled:opacity-40"
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((prev) => prev + 1)}
-          >
-            &gt;
-          </button>
-        </div>
-      )}
     </div>
   );
 };

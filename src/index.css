@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+:root {
+  --color-bg: #1b2328;
+  --color-bg-card: #2c2e3e;
+  --color-primary: #ffb300;
+  --color-secondary: #725b4c;
+  --color-accent: #217844;
+  --color-text: #222;
+  --color-error: #ff4d4d;
+  --color-border: #514737;
+  --color-crema: rgba(255, 244, 214, 0.644);
+  --color-crema-strong: rgba(255, 244, 214, 0.94);
+}
+
+/* Utilidades personalizadas */
 @layer utilities {
   .animate-bounce-x {
     animation: bounce-x 1.3s infinite;
@@ -26,60 +40,132 @@
   }
 }
 
-.campo-bg-stage {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  width: 1536px;
-  height: 1024px;
-  transform: translate(-50%, -50%);
-  z-index: 0;
-  pointer-events: none;
-  overflow: visible;
+/* Nuevo fondo de la web: imagen única, sin aspas ni molino */
+.bg-main-cover {
+  background: url('/bg-campo.png') center center / cover no-repeat fixed !important;
 }
 
-.campo-bg-img {
-  position: absolute;
-  left: 0; top: 0;
-  width: 1536px;
-  height: 1024px;
-  z-index: 1;
-  user-drag: none;
-  user-select: none;
-  pointer-events: none;
-}
-
-.campo-aspas-img {
-  position: absolute;
-  left: 522px;  /* centro del molino */
-  top: 525px;
-  width: 500px;
-  height: 500px;
-  margin-left: -345px;  /* para centrar la aspa en ese punto */
-  margin-top: -500px;
-  z-index: 2;
-  pointer-events: none;
-  animation: girar-aspas 8s linear infinite;
-  opacity: 0.95;
-}
-@keyframes girar-aspas { 100% { transform: rotate(360deg);} }
-
+/* Reseteo global */
 body {
-  background: #201d2b; /* Color oscuro para que los bordes no se noten */
-  margin: 0;           /* Quita margen por defecto */
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  font-family: 'Inter', Arial, sans-serif;
+  margin: 0;
   min-height: 100vh;
   width: 100vw;
-  overflow-x: hidden;  /* Evita barras de scroll horizontal */
+  overflow-x: hidden;
 }
 
-@media (max-width: 600px) {
-  .campo-bg-stage {
-    left: 50%;
-    top: 50%;
-    /* En desktop: translate(-50%, -50%)
-       En mobile:  x=522 (molino) centrado -> translateX(calc(-522px + 50vw)) */
-    transform: translate(calc(-522px + 50vw), -50%);
-    width: 1536px;
-    height: 1024px;
+@media (prefers-color-scheme: dark), (prefers-color-scheme: light) {
+  body {
+    background: var(--color-bg) !important;
+    color: var(--color-text) !important;
   }
 }
+
+footer {
+  background: var(--color-bg-card) !important;
+  border-top: 1px solid var(--color-border);
+}
+
+.menu-panel {
+  background: rgba(48, 47, 47, 0.623) !important;
+  backdrop-filter: blur(4px);
+}
+
+.menu-panel .menu-list {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.menu-drawer, .drawer {
+  background: var(--color-crema) !important;
+  color: #6B5432 !important;
+  border-left: 1px solid var(--color-border);
+}
+
+/* Formularios */
+input, textarea, select {
+  background: var(--color-crema) !important;
+  color: #594317 !important;
+  border: 1px solid var(--color-secondary);
+}
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--color-primary);
+}
+::placeholder {
+  color: #bfa76c;
+  opacity: 1;
+}
+
+/* Botones */
+button, .btn {
+  background: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+  font-weight: bold;
+  border-radius: 0.5rem;
+  transition: background 0.2s;
+  border: none;
+}
+button:hover, .btn:hover {
+  background: var(--color-accent) !important;
+}
+
+.btn-red {
+  background: #f44336 !important;
+  cursor: pointer;
+}
+.btn-red:hover {
+  background: #e53935 !important;
+}
+
+/* Errores */
+.error, .text-error, .input-error {
+  color: var(--color-error) !important;
+}
+
+/* Cards y contenedores destacados */
+.card, .modal, .bg-card, .form-container {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  border-radius: 1rem;
+}
+
+/* Fondos personalizados y texto */
+.bg-bg-card-90 {
+  background: rgba(44, 46, 62, 0.92) !important;
+}
+.bg-card-strong {
+  background: rgba(33, 36, 48, 0.98) !important;
+}
+.bg-accent {
+  background: var(--color-accent) !important;
+}
+.text-accent {
+  color: var(--color-accent) !important;
+}
+.bg-crema {
+  background: var(--color-crema) !important;
+  backdrop-filter: blur(4px);
+}
+.bg-crema-strong {
+  background: var(--color-crema-strong) !important;
+  backdrop-filter: blur(2px);
+}
+.bg-gris {
+  background: rgba(48, 47, 47, 0.623) !important;
+  backdrop-filter: blur(4px);
+}
+.border-accent {
+  border-color: var(--color-accent) !important;
+}
+.bg-white, .bg-neutral-50, .bg-gray-50, .bg-slate-50 {
+  background: var(--color-bg-card) !important;
+}
+.text-black, .text-neutral-900, .text-gray-900 {
+  color: var(--color-text) !important;
+}
+
+/* ----------- FIN DEL CSS ----------- */

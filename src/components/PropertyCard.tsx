@@ -26,14 +26,13 @@ export interface IProperty {
   extras: string[];
 }
 
-
 export default function PropertyCard({ property }: { property: IProperty }) {
   const firstImage = property.imageUrls?.find(Boolean);
 
   return (
     <Link
       to={`/properties/${property._id}`}
-      className="block group rounded-xl overflow-hidden bg-white dark:bg-[#232347] shadow hover:shadow-lg hover:scale-[1.02] transition-all duration-300 card-hover"
+      className="block group rounded-2xl overflow-hidden bg-crema-strong shadow-lg hover:scale-[1.03] transition-transform duration-300 border border-[#f2dbb1]"
       tabIndex={0}
     >
       {firstImage ? (
@@ -43,18 +42,16 @@ export default function PropertyCard({ property }: { property: IProperty }) {
           className="w-full h-48 object-cover group-hover:opacity-90 transition-opacity"
         />
       ) : (
-        <div className="w-full h-48 flex items-center justify-center bg-gray-100 text-gray-400 text-4xl">
+        <div className="w-full h-48 flex items-center justify-center bg-[#f6eed7] text-[#bfa76c] text-lg font-semibold">
           Sin imagen
         </div>
       )}
       <div className="p-4">
-        <h2 className="text-lg font-bold mb-1 group-hover:text-primary">
+        <h2 className="text-lg font-bold mb-1 group-hover:text-primary transition-colors text-[#967624]">
           {property.title}
         </h2>
-        <p className="text-neutral-600 dark:text-neutral-300 text-sm">
-          {property.location}
-        </p>
-        <p className="text-green-600 font-semibold mt-2">
+        <p className="text-[#7a6c3f] text-sm">{property.location}</p>
+        <p className="text-green-700 font-semibold mt-2">
           {property.operationType === "Arrendamiento"
             ? "Precio a acordar"
             : property.price

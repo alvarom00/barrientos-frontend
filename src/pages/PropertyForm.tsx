@@ -283,11 +283,12 @@ export default function PropertyFormRH() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#18182a] flex items-center justify-center py-10">
-      <div className="w-full max-w-2xl bg-white dark:bg-[#232347] rounded-xl shadow-lg px-6 sm:px-10 py-8 animate-fade-in">
-        <h1 className="text-2xl font-bold mb-6 text-center">
+    <div className="min-h-screen flex items-center justify-center py-10 bg-transparent">
+      <div className="w-full max-w-2xl bg-crema rounded-2xl shadow-xl px-6 sm:px-10 py-8 animate-fade-in border border-[#ebdbb9] !text-[#514737]">
+        <h1 className="text-2xl font-bold mb-6 text-center text-[#594317]">
           {isEdit ? "Editar Propiedad" : "Nueva Propiedad"}
         </h1>
+
         <form
           onSubmit={handleSubmit(onSubmit, onError)}
           className="space-y-6"
@@ -295,113 +296,141 @@ export default function PropertyFormRH() {
         >
           {/* Título */}
           <div>
-            <label htmlFor="title" className="block font-medium mb-1">
+            <label
+              htmlFor="title"
+              className="block font-semibold mb-1 text-[#594317]"
+            >
               Título
             </label>
             <input
               {...register("title")}
               placeholder="Título"
-              className="w-full p-2 border border-gray-300 dark:border-[#393964] bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white rounded"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.title && (
-              <p className="text-red-500">{errors.title.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.title.message}
+              </p>
             )}
           </div>
 
           {/* Descripción */}
           <div>
-            <label htmlFor="description" className="block font-medium mb-1">
+            <label
+              htmlFor="description"
+              className="block font-semibold mb-1 text-[#594317]"
+            >
               Descripción
             </label>
             <textarea
               {...register("description")}
-              placeholder="Descripción"
               rows={3}
-              className="w-full p-2 border border-gray-300 dark:border-[#393964] bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white rounded resize-none"
+              placeholder="Descripción"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] resize-none focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.description && (
-              <p className="text-red-500">{errors.description.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.description.message}
+              </p>
             )}
           </div>
 
-          {/* Selects */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <select
-                {...register("operationType")}
-                className="w-full p-2 border border-gray-300 dark:border-[#393964] rounded bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white"
-              >
-                <option value="">Tipo de operación</option>
-                {OPERATION_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              {errors.operationType && (
-                <p className="text-red-500">{errors.operationType.message}</p>
-              )}
-            </div>
+          {/* Tipo de operación */}
+          <div>
+            <label className="block font-semibold mb-1 text-[#594317]">
+              Tipo de operación
+            </label>
+            <select
+              {...register("operationType")}
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] focus:outline-primary focus:border-[#ffe8ad] transition"
+              defaultValue=""
+            >
+              <option value="">Tipo de operación</option>
+              {OPERATION_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            {errors.operationType && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.operationType.message}
+              </p>
+            )}
           </div>
 
-          {/* Precio */}
+          {/* Precio (solo venta) */}
           {operationType !== "Arrendamiento" && (
             <div>
-              <label htmlFor="price" className="block font-medium mb-1">
+              <label
+                htmlFor="price"
+                className="block font-semibold mb-1 text-[#594317]"
+              >
                 Precio
               </label>
               <input
                 {...register("price")}
                 type="number"
                 placeholder="Precio"
-                className="w-full p-2 border border-gray-300 dark:border-[#393964] bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white rounded"
+                className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
               />
               {errors.price && (
-                <p className="text-red-500">{errors.price.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.price.message}
+                </p>
               )}
             </div>
           )}
 
+          {/* Hectáreas */}
           <div>
-            <label htmlFor="measure" className="block font-medium mb-1">
+            <label
+              htmlFor="measure"
+              className="block font-semibold mb-1 text-[#594317]"
+            >
               Hectáreas
             </label>
             <input
-              {...register("measure", {
-                valueAsNumber: true,
-              })}
+              {...register("measure", { valueAsNumber: true })}
               type="number"
               placeholder="Ej: 150 (en ha)"
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.measure && (
-              <p className="text-red-500">{errors.measure.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.measure.message}
+              </p>
             )}
           </div>
 
           {/* Ubicación */}
           <div>
-            <label htmlFor="location" className="block font-medium mb-1">
+            <label
+              htmlFor="location"
+              className="block font-semibold mb-1 text-[#594317]"
+            >
               Ubicación
             </label>
             <input
               {...register("location")}
               placeholder="Ubicación"
-              className="w-full p-2 border border-gray-300 dark:border-[#393964] bg-gray-50 dark:bg-[#18182a] text-gray-900 dark:text-white rounded"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.location && (
-              <p className="text-red-500">{errors.location.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.location.message}
+              </p>
             )}
           </div>
 
-          {/* Lat/Lng */}
+          {/* Mapa / Lat Lng */}
           <div>
-            <label className="block font-medium mb-1">
+            <label className="block font-semibold mb-1 text-[#594317]">
               Ubicación en el mapa
             </label>
-            <div className="h-64 w-full rounded-xl overflow-hidden mb-2">
+            <div className="h-64 w-full rounded-xl overflow-hidden mb-2 border border-[#ebdbb9] bg-crema-strong">
               <MapContainer
-                center={lat && lng ? [lat, lng] : [-36, -65]} // centro por default Argentina
+                center={lat && lng ? [lat, lng] : [-36, -65]}
                 zoom={lat && lng ? 13 : 5}
                 className="h-full w-full"
                 style={{ height: 256 }}
@@ -425,64 +454,64 @@ export default function PropertyFormRH() {
                 {...register("lat")}
                 type="number"
                 placeholder="Latitud"
-                className="w-1/2 p-2 border rounded"
+                className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468]"
                 readOnly
               />
               <input
                 {...register("lng")}
                 type="number"
                 placeholder="Longitud"
-                className="w-1/2 p-2 border rounded"
+                className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468]"
                 readOnly
               />
             </div>
-            {/* Mensaje de error si corresponde */}
-            <p className="text-red-500">
+            <p className="text-red-500 text-sm mt-1">
               {errors.lat?.message || errors.lng?.message}
             </p>
           </div>
-          {/* IMÁGENES */}
+
+          {/* Imágenes */}
           <div>
-            <label className="block font-medium mb-1">Imágenes</label>
+            <label className="block font-semibold mb-1 text-[#594317]">
+              Imágenes
+            </label>
             <input
               type="file"
               accept="image/*"
               multiple
               onChange={handleImageChange}
-              className="w-full p-2 border rounded bg-white"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317]"
             />
 
-            {/* Previews de imágenes ya guardadas */}
             <div className="flex gap-2 mt-2 flex-wrap">
               {existingImages.map((url, i) => (
                 <div key={`exist-${i}`} className="relative w-24 h-16">
                   <img
                     src={`${API_URL}${url}`}
                     alt={`img-${i}`}
-                    className="w-full h-full object-cover rounded border"
+                    className="w-full h-full object-cover rounded border border-[#ebdbb9]"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveExistingImage(i)}
-                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                     title="Borrar imagen"
                   >
                     ×
                   </button>
                 </div>
               ))}
-              {/* Previews de imágenes nuevas */}
               {imageFiles.map((file, i) => (
                 <div key={`new-${i}`} className="relative w-24 h-16">
                   <img
                     src={URL.createObjectURL(file)}
                     alt=""
-                    className="w-full h-full object-cover rounded border"
+                    className="w-full h-full object-cover rounded border border-[#ebdbb9]"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(i)}
-                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                     title="Borrar imagen"
                   >
                     ×
@@ -490,55 +519,57 @@ export default function PropertyFormRH() {
                 </div>
               ))}
             </div>
-            {/* Error de validación */}
+
             {errors.imageFiles &&
               typeof errors.imageFiles.message === "string" && (
-                <p className="text-red-500">{errors.imageFiles.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.imageFiles.message}
+                </p>
               )}
           </div>
 
-          {/* VIDEOS */}
+          {/* Videos */}
           <div>
-            <label className="block font-medium mb-1">Videos</label>
+            <label className="block font-semibold mb-1 text-[#594317]">
+              Videos
+            </label>
             <input
               type="file"
               accept="video/*"
               multiple
               onChange={handleVideoChange}
-              className="w-full p-2 border rounded bg-white"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317]"
             />
 
-            {/* Previews de videos ya guardados */}
             <div className="flex gap-2 mt-2 flex-wrap">
               {existingVideos.map((url, i) => (
                 <div key={`exist-video-${i}`} className="relative w-24 h-16">
                   <video
                     src={`${API_URL}${url}`}
-                    className="w-full h-full rounded border"
+                    className="w-full h-full rounded border border-[#ebdbb9]"
                     controls
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveExistingVideo(i)}
-                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                     title="Borrar video"
                   >
                     ×
                   </button>
                 </div>
               ))}
-              {/* Previews de videos nuevos */}
               {videoFiles.map((file, i) => (
                 <div key={`new-video-${i}`} className="relative w-24 h-16">
                   <video
                     src={URL.createObjectURL(file)}
-                    className="w-full h-full rounded border"
+                    className="w-full h-full rounded border border-[#ebdbb9]"
                     controls
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveVideo(i)}
-                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                     title="Borrar video"
                   >
                     ×
@@ -546,49 +577,55 @@ export default function PropertyFormRH() {
                 </div>
               ))}
             </div>
-            {/* Error de validación */}
+
             {errors.videoFiles &&
               typeof errors.videoFiles.message === "string" && (
-                <p className="text-red-500">{errors.videoFiles.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.videoFiles.message}
+                </p>
               )}
           </div>
 
+          {/* Campos de Vivienda (condicional) */}
           {hasVivienda && (
             <>
               <div>
                 <label
                   htmlFor="houseMeasures"
-                  className="block font-medium mb-1"
+                  className="block font-semibold mb-1 text-[#594317]"
                 >
                   Superficie (Vivienda)
                 </label>
                 <input
-                  {...register("houseMeasures", {
-                    valueAsNumber: true,
-                  })}
+                  {...register("houseMeasures", { valueAsNumber: true })}
                   type="number"
                   placeholder="Ej: 150 (en m²)"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.houseMeasures && (
-                  <p className="text-red-500">{errors.houseMeasures.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.houseMeasures.message}
+                  </p>
                 )}
               </div>
+
               <div>
-                <label className="block font-medium mb-1">
+                <label className="block font-semibold mb-1 text-[#594317]">
                   Cantidad de ambientes
                 </label>
                 <input
                   {...register("environments")}
                   type="number"
                   placeholder="Ambientes"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.environments && (
-                  <p className="text-red-500">{errors.environments.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.environments.message}
+                  </p>
                 )}
               </div>
-              {/* Lista de ambientes */}
+
               <Controller
                 name="environmentsList"
                 control={control}
@@ -618,7 +655,7 @@ export default function PropertyFormRH() {
                       }
                     />
                     {errors.environmentsList?.message && (
-                      <p className="text-red-500">
+                      <p className="text-red-500 text-sm mt-1">
                         {errors.environmentsList.message}
                       </p>
                     )}
@@ -626,7 +663,7 @@ export default function PropertyFormRH() {
                       errors.environmentsList.map(
                         (err, i) =>
                           err && (
-                            <p key={i} className="text-red-500">
+                            <p key={i} className="text-red-500 text-sm">
                               Ambiente {i + 1}: {err?.message}
                             </p>
                           )
@@ -635,62 +672,80 @@ export default function PropertyFormRH() {
                 )}
               />
 
-              {/* Dormitorios */}
               <div>
-                <label className="block font-medium mb-1">Dormitorios</label>
+                <label className="block font-semibold mb-1 text-[#594317]">
+                  Dormitorios
+                </label>
                 <input
                   {...register("bedrooms")}
                   type="number"
                   placeholder="Dormitorios"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.bedrooms && (
-                  <p className="text-red-500">{errors.bedrooms.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.bedrooms.message}
+                  </p>
                 )}
               </div>
-              {/* Baños */}
+
               <div>
-                <label className="block font-medium mb-1">Baños</label>
+                <label className="block font-semibold mb-1 text-[#594317]">
+                  Baños
+                </label>
                 <input
                   {...register("bathrooms")}
                   type="number"
                   placeholder="Baños"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.bathrooms && (
-                  <p className="text-red-500">{errors.bathrooms.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.bathrooms.message}
+                  </p>
                 )}
               </div>
-              {/* Condición */}
+
               <div>
-                <label className="block font-medium mb-1">Condición</label>
+                <label className="block font-semibold mb-1 text-[#594317]">
+                  Condición
+                </label>
                 <input
                   {...register("condition")}
                   placeholder="Condición"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.condition && (
-                  <p className="text-red-500">{errors.condition.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.condition.message}
+                  </p>
                 )}
               </div>
-              {/* Antigüedad */}
+
               <div>
-                <label className="block font-medium mb-1">Antigüedad</label>
+                <label className="block font-semibold mb-1 text-[#594317]">
+                  Antigüedad
+                </label>
                 <input
                   {...register("age")}
                   placeholder="Antigüedad"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.age && (
-                  <p className="text-red-500">{errors.age.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.age.message}
+                  </p>
                 )}
               </div>
             </>
           )}
 
-          {/* CheckboxGroup para features */}
-          <div className="mb-4">
-            <label htmlFor="services" className="block font-medium mb-1">
+          {/* Servicios / Extras */}
+          <div>
+            <label
+              htmlFor="services"
+              className="block font-semibold mb-1 text-[#594317]"
+            >
               Servicios
             </label>
             <Controller
@@ -707,8 +762,12 @@ export default function PropertyFormRH() {
               )}
             />
           </div>
-          <div className="mb-4">
-            <label htmlFor="extras" className="block font-medium mb-1">
+
+          <div>
+            <label
+              htmlFor="extras"
+              className="block font-semibold mb-1 text-[#594317]"
+            >
               Extras
             </label>
             <Controller
@@ -726,30 +785,10 @@ export default function PropertyFormRH() {
             />
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
-            className="
-    w-full
-    py-2
-    rounded-lg
-    font-semibold
-    transition-all
-    duration-200
-    shadow
-    focus:outline-none
-    focus:ring-2
-    focus:ring-primary
-    bg-gradient-to-r
-    from-blue-600
-    via-indigo-600
-    to-purple-600
-    text-white
-    hover:from-indigo-700
-    hover:via-purple-700
-    hover:to-pink-600
-    active:scale-95
-    animate-fade-in
-  "
+            className="w-full py-2 rounded-lg font-semibold shadow bg-[#ffe8ad] text-[#594317] hover:bg-[#f5e3b8] hover:text-[#ad924a] transition-all duration-200 active:scale-95 border border-[#ebdbb9] cursor-pointer"
           >
             Guardar propiedad
           </button>

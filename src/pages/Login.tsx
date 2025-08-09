@@ -1,77 +1,119 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+
+type LoginForm = {
+  email: string;
+  password: string;
+};
+
+const schema = yup.object({
+  email: yup
+    .string()
+    .email("Ingresá un correo válido")
+    .required("El email es obligatorio"),
+  password: yup
+    .string()
+    .min(6, "La contraseña debe tener al menos 6 caracteres")
+    .required("La contraseña es obligatoria"),
+});
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginForm>({
+    resolver: yupResolver(schema),
+    mode: "onBlur",
+  });
+
+  const onSubmit = async (values: LoginForm) => {
+    setServerError(null);
     try {
       const res = await fetch("http://localhost:3000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(values),
       });
       const data = await res.json();
+
       if (!res.ok) {
-        setError(data.message || "Error de autenticación");
-      } else {
-        // Guardá el token
-        localStorage.setItem("token", data.token);
-        navigate("/admin/dashboard");
+        setServerError(data?.message || "Email o contraseña incorrectos.");
+        return;
       }
-    } catch (err) {
-      setError("Error de red");
-    } finally {
-      setLoading(false);
+      localStorage.setItem("token", data.token);
+      navigate("/admin/dashboard");
+    } catch {
+      setServerError(
+        "No se pudo conectar con el servidor. Intentá nuevamente."
+      );
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center py-10">
       <form
-        onSubmit={handleLogin}
-        className="bg-white p-6 rounded shadow-md w-80"
+        onSubmit={handleSubmit(onSubmit)}
+        autoComplete="off"
+        className="bg-crema rounded-xl shadow-lg max-w-md w-full px-6 py-8 animate-fade-in border border-[#ebdbb9]"
       >
-        <h2 className="text-xl font-bold mb-4">Admin Login</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center text-[#594317]">
+          Admin Login
+        </h2>
+
+        {/* Email */}
+        <label className="block font-semibold mb-1 text-[#594317]">Email</label>
         <input
+          {...register("email")}
           type="email"
-          placeholder="Email"
-          value={email}
-          required
-          onChange={e => setEmail(e.target.value)}
-          className="w-full p-2 border mb-4"
+          placeholder="ejemplo@correo.com"
+          className="w-full p-2 rounded"
         />
+        {errors.email?.message && (
+          <div className="error text-sm mt-1">{errors.email.message}</div>
+        )}
+
+        {/* Password */}
+        <label className="block font-semibold mb-3 mt-4 text-[#594317]">
+          Contraseña
+        </label>
         <input
+          {...register("password")}
           type="password"
-          placeholder="Contraseña"
-          value={password}
-          required
-          onChange={e => setPassword(e.target.value)}
-          className="w-full p-2 border mb-4"
+          placeholder="••••••••"
+          className="w-full p-2 rounded"
         />
+        {errors.password?.message && (
+          <div className="error text-sm mt-1">{errors.password.message}</div>
+        )}
+
+        {/* Error del servidor (si ocurre) */}
+        {serverError && (
+          <div className="error text-center mt-4 font-semibold">
+            {serverError}
+          </div>
+        )}
+
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white p-2 rounded"
-          disabled={loading}
+          className="w-full py-2 rounded font-bold transition mt-6"
         >
-          {loading ? "Entrando..." : "Login"}
+          {isSubmitting ? "Entrando..." : "Login"}
         </button>
+
         <Link
           to="/forgot-password"
-          className="text-primary hover:underline block mt-2"
+          className="block mt-3 text-center hover:underline"
+          style={{ color: "#6B5432" }}
         >
           ¿Olvidaste tu contraseña?
         </Link>
-        {error && (
-          <div className="text-red-600 font-semibold mt-2 text-center">{error}</div>
-        )}
       </form>
     </div>
   );

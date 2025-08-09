@@ -13,11 +13,13 @@ import WhatsAppFab from "./components/WhatsAppFab";
 import Nosotros from "./pages/Nosotros";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
     <>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* Layout envuelve todo excepto el login */}
           <Route element={<SiteLayout />}>

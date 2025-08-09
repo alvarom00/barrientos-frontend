@@ -14,15 +14,20 @@ export default function ErrorPage({
   showHome = true,
 }: ErrorPageProps) {
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gradient-to-b from-gray-100 to-gray-200 dark:from-[#232347] dark:to-[#1a1a30]">
-      <div className="text-center p-8 bg-white dark:bg-[#232347] rounded-xl shadow-xl animate-fade-in">
-        <h1 className="text-7xl font-black text-primary mb-2">{code}</h1>
-        <h2 className="text-2xl font-bold mb-2">{title}</h2>
-        <p className="text-gray-500 dark:text-gray-300 mb-6">{message}</p>
+    <div className="min-h-[80vh] flex flex-col items-center justify-center bg-transparent py-10">
+      <div className="text-center p-8 bg-crema rounded-xl shadow-lg animate-fade-in border border-[#ebdbb9] max-w-lg w-full">
+        <h1 className="text-7xl font-black text-[#b2914a] mb-2">{code}</h1>
+        <h2 className="text-2xl font-bold text-[#594317] mb-3">{title}</h2>
+        <p className="text-[#7a6b48] mb-6">{message}</p>
         {showHome && (
           <Link
             to="/"
-            className="inline-block bg-primary text-white rounded-full px-6 py-2 mt-4 shadow hover:scale-105 hover:bg-primary/90 transition"
+            className="
+              inline-block px-6 py-2 mt-4 rounded-lg font-semibold shadow
+              bg-[#ffe8ad] text-[#594317]
+              hover:bg-[#f5e3b8] hover:text-[#ad924a]
+              transition-all duration-200 active:scale-95 border border-[#ebdbb9]
+            "
           >
             Volver al inicio
           </Link>

@@ -28,21 +28,8 @@ const menuVariants = {
   },
 };
 
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(
-    () => window.innerWidth < breakpoint
-  );
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [breakpoint]);
-  return isMobile;
-}
-
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isMobile = useIsMobile();
 
   // Bloquea el scroll cuando el menú está abierto
   useEffect(() => {
@@ -53,18 +40,27 @@ export default function Navbar() {
   }, [isMenuOpen]);
 
   return (
-    <nav className="fixed w-full z-1100 transition-all duration-300 bg-background/80 backdrop-blur-md shadow-xs">
+    <nav className="fixed w-full z-1100 bg-gris backdrop-blur-md shadow-xs border-b border-crema">
       <div className="flex items-center justify-between px-4 py-2 sm:px-8">
-        <span className="text-xl font-bold text-primary">
-          Inmobiliaria Rural
-        </span>
+        <NavLink
+          to="/"
+          className="flex items-center gap-3 font-bold text-xl sm:text-3xl text-[#b2914a] whitespace-nowrap hover:opacity-90 transition"
+          aria-label="Ir al inicio"
+        >
+          <img
+            src="/barrientos-logo.png"
+            className="h-15 sm:h-32 w-auto drop-shadow-md"
+            alt="Campos Barrientos"
+          />
+          <span>Campos Barrientos</span>
+        </NavLink>
 
         <button
           onClick={() => setIsMenuOpen(true)}
-          className="p-2 text-foreground z-1200 border border-primary rounded-lg hover:bg-primary/10 active:scale-95 transition-all"
+          className="p-2 border-none bg-primary text-[#6B5432] rounded-lg shadow font-bold hover:bg-accent active:scale-95 transition-all"
           aria-label="Abrir menú"
         >
-          <Menu size={28} />
+          <Menu size={28} color="#b2914a" />
         </button>
 
         {createPortal(
@@ -80,106 +76,54 @@ export default function Navbar() {
                   transition={{ duration: 0.18 }}
                   onClick={() => setIsMenuOpen(false)}
                 />
-                {/* Mobile: menú centrado, violeta fuerte */}
-                {isMobile ? (
-                  // MENÚ FULLSCREEN MOBILE
-                  <motion.aside
-                    className="fixed top-0 right-0 h-full w-80 max-w-[95vw] z-1200 bg-gray-800/90 shadow-2xl border-l border-primary flex flex-col"
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    variants={menuVariants}
+                {/* MOBILE & DESKTOP MENU */}
+                <motion.aside
+                  className={clsx(
+                    "menu-panel fixed top-0 right-0 h-full w-80 max-w-[95vw] z-1200",
+                    "border-l border-white/10", // borde sutil (podés quitarlo)
+                    "backdrop-blur-md shadow-none", // sin sombra para que no aparezcan las líneas
+                    "flex flex-col text-[#f5f5f5]"
+                  )}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={menuVariants}
+                >
+                  <button
+                    onClick={() => setIsMenuOpen(false)}
+                    className="absolute top-5 right-5 p-2 border-none bg-primary text-[#6B5432] rounded-full shadow hover:bg-accent active:scale-95 transition"
+                    aria-label="Cerrar menú"
                   >
-                    <button
-                      onClick={() => setIsMenuOpen(false)}
-                      className="absolute top-5 right-5 p-2 border border-primary rounded-full bg-background/90 hover:bg-primary/30 text-primary hover:text-primary-foreground shadow-lg transition"
-                      aria-label="Cerrar menú"
-                    >
-                      <X size={28} />
-                    </button>
-                    <nav className="flex flex-col mt-20 gap-5 px-6">
-                      {navItems.map((item) => (
-                        <motion.div
-                          key={item.to}
-                          whileHover={{
-                            scale: 1.05,
-                            boxShadow: "0 8px 28px rgba(59,49,140,0.17)",
-                            backgroundColor: "#3b318c",
-                          }}
-                          whileTap={{ scale: 0.97 }}
-                          className="rounded-xl"
+                    <X size={28} color="#b2914a" />
+                  </button>
+
+                  <nav className="flex flex-col mt-20 gap-4 px-6 pb-8">
+                    {navItems.map((item) => (
+                      <motion.div
+                        key={item.to}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="rounded-lg"
+                      >
+                        <NavLink
+                          to={item.to}
+                          className={({ isActive }) =>
+                            clsx(
+                              // botón sutil, sin borde, con leve overlay
+                              "block w-full text-center px-4 py-3 font-semibold text-lg rounded-lg transition-all duration-200",
+                              "bg-white/20 text-white hover:bg-white/28", // normal/hover
+                              isActive && "bg-white/32 ring-1 ring-white/25" // activo
+                            )
+                          }
+                          style={{ letterSpacing: 0.5 }}
+                          onClick={() => setIsMenuOpen(false)}
                         >
-                          <NavLink
-                            to={item.to}
-                            className={({ isActive }) =>
-                              clsx(
-                                "w-full block text-center border-2 border-white rounded-xl px-4 py-4 font-bold text-lg shadow-lg transition-all duration-200",
-                                // Botón activo SOLO en mobile: fondo blanco, texto violeta intenso
-                                isActive
-                                  ? "bg-white text-primary"
-                                  : "bg-transparent text-white hover:bg-[#4232a8] hover:text-yellow-300"
-                              )
-                            }
-                            style={{
-                              letterSpacing: 0.5,
-                            }}
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            {item.label}
-                          </NavLink>
-                        </motion.div>
-                      ))}
-                    </nav>
-                  </motion.aside>
-                ) : (
-                  // Desktop: lateral animado, dark/light, animaciones
-                  <motion.aside
-                    className="fixed top-0 right-0 h-full w-80 max-w-[90vw] z-1200 bg-white dark:bg-[#232347] shadow-2xl border-l border-primary flex flex-col"
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    variants={menuVariants}
-                  >
-                    <button
-                      onClick={() => setIsMenuOpen(false)}
-                      className="absolute top-5 right-5 p-2 text-foreground border border-primary rounded-full bg-background hover:bg-primary/10"
-                      aria-label="Cerrar menú"
-                    >
-                      <X size={28} />
-                    </button>
-                    <nav className="flex flex-col mt-16 gap-4 px-6">
-                      {navItems.map((item) => (
-                        <motion.div
-                          key={item.to}
-                          whileHover={{
-                            scale: 1.045,
-                            boxShadow: "0 8px 24px rgba(59,49,140,0.14)",
-                            backgroundColor: "#3b318c",
-                            color: "#fff",
-                          }}
-                          whileTap={{ scale: 0.98 }}
-                          className="rounded-lg"
-                        >
-                          <NavLink
-                            to={item.to}
-                            className={({ isActive }) =>
-                              clsx(
-                                "flex items-center border border-primary rounded-lg px-4 py-3 font-semibold text-lg transition-all duration-200 bg-background/80",
-                                "hover:bg-primary hover:text-yellow-300 hover:shadow-lg focus:bg-primary focus:text-yellow-300 focus:shadow",
-                                isActive
-                                  ? "bg-primary text-yellow-300 shadow"
-                                  : "text-foreground"
-                              )
-                            }
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            {item.label}
-                          </NavLink>
-                        </motion.div>
-                      ))}
-                    </nav>
-                  </motion.aside>
-                )}
+                          {item.label}
+                        </NavLink>
+                      </motion.div>
+                    ))}
+                  </nav>
+                </motion.aside>
               </>
             )}
           </AnimatePresence>,
