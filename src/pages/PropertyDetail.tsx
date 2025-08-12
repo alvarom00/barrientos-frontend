@@ -144,7 +144,7 @@ export default function PropertyDetail() {
         {/* HEADER */}
         <section className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 border-b border-primary/20 pb-4">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl md:text-3xl font-bold break-words break-all text-[#514737] drop-shadow mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold break-words break-all drop-shadow mb-2">
               {property.title}
             </h1>
             <p className="mt-1 truncate md:whitespace-normal !text-[#514737]">
@@ -176,12 +176,12 @@ export default function PropertyDetail() {
         </section>
 
         {/* UBICACIÓN Y HECTÁREAS */}
-        <section className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-          <div className="text-base font-semibold md:text-lg !text-[#514737]">
+        <section className="flex flex-col md:flex-row md:justify-center md:items-center md:gap-50 gap-6">
+          <div className="text-base font-semibold md:text-lg">
             <span className="font-bold">Ubicación:</span>{" "}
             <span>{property.location}</span>
           </div>
-          <div className="text-base font-semibold md:text-lg !text-[#514737]">
+          <div className="text-base font-semibold md:text-lg">
             <span className="font-bold">Hectáreas:</span>{" "}
             <span className="text-primary font-bold">
               {property.measure?.toLocaleString()} ha
@@ -225,7 +225,7 @@ export default function PropertyDetail() {
         >
           {/* DESCRIPCIÓN: SIEMPRE UNA SOLA COLUMNA, TODA LA FILA */}
           {property.description && (
-            <div className="w-full bg-crema-strong !text-[#514737] rounded-xl p-5 font-normal shadow md:col-span-2">
+            <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow md:col-span-2">
               <h2 className="text-xl font-bold mb-2">Descripción</h2>
               <p className="whitespace-pre-line break-words">
                 {property.description}
@@ -236,7 +236,7 @@ export default function PropertyDetail() {
           {/* Detalles vivienda y ambientes */}
           {property.extras?.includes("Vivienda") && (
             <>
-              <div className="w-full bg-crema-strong !text-[#514737] rounded-xl p-5 font-normal shadow">
+              <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow">
                 <h2 className="text-xl font-bold mb-2">
                   Detalles de la vivienda
                 </h2>
@@ -273,7 +273,7 @@ export default function PropertyDetail() {
                   )}
                 </div>
               </div>
-              <div className="w-full bg-crema-strong !text-[#514737] rounded-xl p-5 font-normal shadow">
+              <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow">
                 <h2 className="text-xl font-bold mb-2">Ambientes</h2>
                 <ul className="flex flex-wrap gap-2">
                   {property.environmentsList?.filter(Boolean).map((amb, i) => (
@@ -292,7 +292,7 @@ export default function PropertyDetail() {
 
           {/* Servicios */}
           {property.services?.length > 0 && property.services.some(Boolean) && (
-            <div className="w-full bg-crema-strong !text-[#514737] rounded-xl p-5 font-normal shadow">
+            <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow">
               <h2 className="text-xl font-bold mb-2">Servicios</h2>
               <ul className="flex flex-wrap gap-2">
                 {property.services.filter(Boolean).map((serv, i) => (
@@ -310,7 +310,7 @@ export default function PropertyDetail() {
 
           {/* Extras */}
           {property.extras?.length > 0 && property.extras.some(Boolean) && (
-            <div className="w-full bg-crema-strong !text-[#514737] rounded-xl p-5 font-normal shadow">
+            <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow">
               <h2 className="text-xl font-bold mb-2">Extras</h2>
               <ul className="flex flex-wrap gap-2">
                 {property.extras.filter(Boolean).map((ext, i) => (
@@ -329,7 +329,7 @@ export default function PropertyDetail() {
 
         {/* CONTACTO */}
         <section className="max-w-lg mx-auto mt-12 bg-crema-strong rounded-xl p-6 shadow border border-primary/30">
-          <h2 className="text-2xl font-bold mb-4 !text-[#514737]">Contacto</h2>
+          <h2 className="text-2xl font-bold mb-4">Contacto</h2>
           <form
             className="space-y-4"
             onSubmit={handleSubmit(onSubmit)}
@@ -339,7 +339,7 @@ export default function PropertyDetail() {
               <input
                 {...register("nombre")}
                 placeholder="Tu nombre"
-                className="w-full p-2 rounded bg-crema border border-primary/30 !text-[#514737] placeholder:text-[#bba975]"
+                className="w-full p-2 rounded bg-crema border border-primary/30 placeholder:text-[#bba975]"
                 disabled={propertyLoading}
               />
               {errors.nombre && (
@@ -352,7 +352,7 @@ export default function PropertyDetail() {
               <input
                 {...register("email")}
                 placeholder="Tu email"
-                className="w-full p-2 rounded bg-crema border border-primary/30 !text-[#514737] placeholder:text-[#bba975]"
+                className="w-full p-2 rounded bg-crema border border-primary/30 placeholder:text-[#bba975]"
                 disabled={propertyLoading}
               />
               {errors.email && (
@@ -365,7 +365,7 @@ export default function PropertyDetail() {
               <input
                 {...register("telefono")}
                 placeholder="Teléfono / WhatsApp"
-                className="w-full p-2 rounded bg-crema border border-primary/30 !text-[#514737] placeholder:text-[#bba975]"
+                className="w-full p-2 rounded bg-crema border border-primary/30 placeholder:text-[#bba975]"
                 disabled={propertyLoading}
                 onInput={(e) => {
                   // @ts-ignore
@@ -382,7 +382,7 @@ export default function PropertyDetail() {
               <textarea
                 {...register("mensaje")}
                 rows={5}
-                className="w-full p-2 rounded bg-crema border border-primary/30 !text-[#514737] placeholder:text-[#bba975]"
+                className="w-full p-2 rounded bg-crema border border-primary/30 placeholder:text-[#bba975]"
                 disabled={propertyLoading}
                 placeholder="Escribe tu mensaje"
               />

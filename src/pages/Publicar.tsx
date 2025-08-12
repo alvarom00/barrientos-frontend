@@ -119,9 +119,11 @@ export default function Publicar() {
       className="bg-crema rounded-xl shadow-lg max-w-md w-full px-6 py-8 space-y-6 animate-fade-in border border-[#ebdbb9]"
       autoComplete="off"
     >
-      <h1 className="text-2xl font-bold mb-4 text-center text-[#594317]">
+      <h1 className="text-2xl font-bold mb-4 text-center">
         Publicar mi campo
       </h1>
+
+      <span className="block mb-3">Completá el siguiente formulario y nos pondremos en contacto con vos.</span>
 
       {triedSubmit && !isValid && (
         <div className="bg-red-100 text-red-700 px-4 py-2 rounded text-center font-medium mb-2">
@@ -131,7 +133,7 @@ export default function Publicar() {
 
       {/* Nombre y Apellido */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Nombre y Apellido <span className="text-red-500">*</span>
         </label>
         <input
@@ -146,7 +148,7 @@ export default function Publicar() {
 
       {/* Email */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Email <span className="text-red-500">*</span>
         </label>
         <input
@@ -162,7 +164,7 @@ export default function Publicar() {
 
       {/* Sos */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Sos <span className="text-red-500">*</span>
         </label>
         <select
@@ -182,7 +184,7 @@ export default function Publicar() {
 
       {/* Queres */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Querés <span className="text-red-500">*</span>
         </label>
         <select
@@ -202,7 +204,7 @@ export default function Publicar() {
 
       {/* Ubicación del campo */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Ubicación del campo <span className="text-red-500">*</span>
         </label>
         <input
@@ -219,7 +221,7 @@ export default function Publicar() {
 
       {/* Superficie total */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Superficie total (en hectáreas) <span className="text-red-500">*</span>
         </label>
         <input
@@ -238,7 +240,7 @@ export default function Publicar() {
 
       {/* Tipo de campo */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Tipo de campo <span className="text-red-500">*</span>
         </label>
         <select
@@ -264,7 +266,7 @@ export default function Publicar() {
 
       {/* Precio estimado por hectárea */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Precio estimado por hectárea (en USD)
         </label>
         <input
@@ -281,7 +283,7 @@ export default function Publicar() {
 
       {/* ¿Qué características querés destacar? */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           ¿Qué características querés destacar?
         </label>
         <input
@@ -298,7 +300,7 @@ export default function Publicar() {
 
       {/* ¿Tenés escritura o documentación lista? */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           ¿Tenés escritura o documentación lista? <span className="text-red-500">*</span>
         </label>
         <select
@@ -320,7 +322,7 @@ export default function Publicar() {
 
       {/* ¿Tenés fotos o videos del campo? */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           ¿Tenés fotos o videos del campo? <span className="text-red-500">*</span>
         </label>
         <select
@@ -346,7 +348,7 @@ export default function Publicar() {
 
       {/* ¿Estás dispuesto a que se publique el campo en redes sociales? */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           ¿Estás dispuesto a que se publique el campo en redes sociales? <span className="text-red-500">*</span>
         </label>
         <select
@@ -374,7 +376,7 @@ export default function Publicar() {
 
       {/* Teléfono / WhatsApp */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Teléfono / WhatsApp <span className="text-red-500">*</span>
         </label>
         <input
@@ -396,7 +398,7 @@ export default function Publicar() {
 
       {/* Comentarios */}
       <div>
-        <label className="block font-semibold mb-1 text-[#594317]">
+        <label className="block font-semibold mb-1">
           Comentarios o algo que quieras agregar
         </label>
         <textarea

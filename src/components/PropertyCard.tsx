@@ -42,12 +42,12 @@ export default function PropertyCard({ property }: { property: IProperty }) {
           className="w-full h-48 object-cover group-hover:opacity-90 transition-opacity"
         />
       ) : (
-        <div className="w-full h-48 flex items-center justify-center bg-[#f6eed7] text-[#bfa76c] text-lg font-semibold">
+        <div className="w-full h-48 flex items-center justify-center bg-[#f6eed7] text-lg font-semibold">
           Sin imagen
         </div>
       )}
       <div className="p-4">
-        <h2 className="text-lg font-bold mb-1 group-hover:text-primary transition-colors text-[#967624]">
+        <h2 className="text-lg font-bold mb-1 group-hover:text-primary transition-colors">
           {property.title}
         </h2>
         <p className="text-[#7a6c3f] text-sm">{property.location}</p>

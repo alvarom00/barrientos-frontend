@@ -101,7 +101,7 @@ input:focus, textarea:focus, select:focus {
 
 /* Botones */
 button, .btn {
-  background: var(--color-primary) !important;
+  background: var(--color-primary);
   color: var(--color-bg) !important;
   font-weight: bold;
   border-radius: 0.5rem;

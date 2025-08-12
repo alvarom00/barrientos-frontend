@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
+const LOGO_COLOR = "#c7ae79ff";
+
 const navItems = [
   { label: "Inicio", to: "/" },
   { label: "Vender o arrendar mi campo", to: "/publicar" },
@@ -31,7 +33,6 @@ const menuVariants = {
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Bloquea el scroll cuando el menú está abierto
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "";
     return () => {
@@ -44,23 +45,37 @@ export default function Navbar() {
       <div className="flex items-center justify-between px-4 py-2 sm:px-8">
         <NavLink
           to="/"
-          className="flex items-center gap-3 font-bold text-xl sm:text-3xl text-[#b2914a] whitespace-nowrap hover:opacity-90 transition"
+          className="flex items-center gap-3 font-bold text-xl sm:text-4xl whitespace-nowrap hover:opacity-90 transition"
           aria-label="Ir al inicio"
+          style={{ color: LOGO_COLOR, textShadow: "0 1px 1px rgba(0,0,0,.45)" }}
         >
           <img
             src="/barrientos-logo.png"
             className="h-15 sm:h-32 w-auto drop-shadow-md"
             alt="Campos Barrientos"
           />
-          <span>Campos Barrientos</span>
+          <span
+            className="sm:pl-6 pl-3 h-6"
+            style={{
+              display: "inline-block",
+              transformOrigin: "center",
+            }}
+          >
+            Campos Barrientos
+          </span>
         </NavLink>
 
         <button
           onClick={() => setIsMenuOpen(true)}
-          className="p-2 border-none bg-primary text-[#6B5432] rounded-lg shadow font-bold hover:bg-accent active:scale-95 transition-all"
+          className="p-2 rounded-lg shadow active:scale-95 transition-all"
           aria-label="Abrir menú"
+          style={{
+            backgroundColor: LOGO_COLOR,
+            color: "#1b2328",
+            boxShadow: "0 2px 10px rgba(0,0,0,.15)",
+          }}
         >
-          <Menu size={28} color="#b2914a" />
+          <Menu size={28} color="#1b2328" />
         </button>
 
         {createPortal(
@@ -76,12 +91,11 @@ export default function Navbar() {
                   transition={{ duration: 0.18 }}
                   onClick={() => setIsMenuOpen(false)}
                 />
-                {/* MOBILE & DESKTOP MENU */}
+                {/* Drawer */}
                 <motion.aside
                   className={clsx(
                     "menu-panel fixed top-0 right-0 h-full w-80 max-w-[95vw] z-1200",
-                    "border-l border-white/10", // borde sutil (podés quitarlo)
-                    "backdrop-blur-md shadow-none", // sin sombra para que no aparezcan las líneas
+                    "border-l border-white/10 backdrop-blur-md shadow-none",
                     "flex flex-col text-[#f5f5f5]"
                   )}
                   initial="hidden"
@@ -91,10 +105,11 @@ export default function Navbar() {
                 >
                   <button
                     onClick={() => setIsMenuOpen(false)}
-                    className="absolute top-5 right-5 p-2 border-none bg-primary text-[#6B5432] rounded-full shadow hover:bg-accent active:scale-95 transition"
+                    className="absolute top-5 right-5 p-2 rounded-full transition"
                     aria-label="Cerrar menú"
+                    style={{ backgroundColor: LOGO_COLOR, color: "#1b2328" }}
                   >
-                    <X size={28} color="#b2914a" />
+                    <X size={28} color="#1b2328" />
                   </button>
 
                   <nav className="flex flex-col mt-20 gap-4 px-6 pb-8">
@@ -109,10 +124,9 @@ export default function Navbar() {
                           to={item.to}
                           className={({ isActive }) =>
                             clsx(
-                              // botón sutil, sin borde, con leve overlay
                               "block w-full text-center px-4 py-3 font-semibold text-lg rounded-lg transition-all duration-200",
-                              "bg-white/20 text-white hover:bg-white/28", // normal/hover
-                              isActive && "bg-white/32 ring-1 ring-white/25" // activo
+                              "bg-white/20 text-white hover:bg-white/28",
+                              isActive && "bg-white/32 ring-1 ring-white/25"
                             )
                           }
                           style={{ letterSpacing: 0.5 }}
