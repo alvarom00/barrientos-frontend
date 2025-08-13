@@ -45,26 +45,34 @@ export default function Navbar() {
       <div className="flex items-center justify-between px-4 py-2 sm:px-8">
         <NavLink
           to="/"
-          className="flex items-center gap-3 font-bold text-xl sm:text-4xl whitespace-nowrap hover:opacity-90 transition"
+          className="flex items-center gap-3 font-bold text-xl sm:text-4xl hover:opacity-90 transition"
           aria-label="Ir al inicio"
           style={{ color: LOGO_COLOR, textShadow: "0 1px 1px rgba(0,0,0,.45)" }}
         >
           <img
             src="/barrientos-logo.png"
-            className="h-15 sm:h-32 w-auto drop-shadow-md"
+            className="h-14 sm:h-32 w-auto drop-shadow-md"
             alt="Campos Barrientos"
           />
+
+          {/* Nombre: mobile en 2 líneas (centrado), desktop en 1 línea con espacio */}
           <span
-            className="sm:pl-6 pl-3 h-6"
-            style={{
-              display: "inline-block",
-              transformOrigin: "center",
-            }}
+            className="
+              pl-3 sm:pl-6
+              h-10 sm:h-auto
+              flex flex-col sm:flex-row sm:gap-2 sm:items-center
+              justify-center
+              leading-tight
+              text-center sm:text-left
+            "
+            style={{ display: "flex", transformOrigin: "center" }}
           >
-            Campos Barrientos
+            <span>Barrientos</span>
+            <span>Agropropiedades</span>
           </span>
         </NavLink>
 
+        {/* Botón abrir menú (color forzado, ignora estilos globales de button) */}
         <button
           onClick={() => setIsMenuOpen(true)}
           className="p-2 rounded-lg shadow active:scale-95 transition-all"
@@ -91,6 +99,7 @@ export default function Navbar() {
                   transition={{ duration: 0.18 }}
                   onClick={() => setIsMenuOpen(false)}
                 />
+
                 {/* Drawer */}
                 <motion.aside
                   className={clsx(
@@ -103,6 +112,7 @@ export default function Navbar() {
                   exit="exit"
                   variants={menuVariants}
                 >
+                  {/* Botón cerrar menú (color forzado) */}
                   <button
                     onClick={() => setIsMenuOpen(false)}
                     className="absolute top-5 right-5 p-2 rounded-full transition"
