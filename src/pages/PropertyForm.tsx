@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
+import { api, abortable } from "../api";
 
 const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 
@@ -19,7 +20,8 @@ export default function PropertyFormRH() {
   const [existingVideos, setExistingVideos] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL; // Solo para preview de assets existentes
+
   const {
     register,
     control,
@@ -51,14 +53,12 @@ export default function PropertyFormRH() {
     value: { lat: number; lng: number } | null;
     onChange: (coords: { lat: number; lng: number }) => void;
   }) {
-    // Un handler para el click en el mapa
     useMapEvents({
       click(e) {
         onChange(e.latlng);
       },
     });
 
-    // El marker se muestra solo si hay coords
     return value ? (
       <Marker
         position={value}
@@ -79,39 +79,38 @@ export default function PropertyFormRH() {
   const extras = watch("extras") ?? [];
   const lat = watch("lat");
   const lng = watch("lng");
-  const API = import.meta.env.VITE_API_URL;
 
   const hasVivienda = extras.includes("Vivienda");
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    setImageFiles([...imageFiles, ...files]);
+    setImageFiles((prev) => [...prev, ...files]);
     setValue("imageFiles", [...imageFiles, ...files], { shouldValidate: true });
   };
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    setVideoFiles([...videoFiles, ...files]);
+    setVideoFiles((prev) => [...prev, ...files]);
     setValue("videoFiles", [...videoFiles, ...files], { shouldValidate: true });
   };
 
   const handleRemoveImage = (index: number) => {
-    setImageFiles(imageFiles.filter((_, i) => i !== index));
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleRemoveExistingImage = (index: number) => {
-    setExistingImages(existingImages.filter((_, i) => i !== index));
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
     clearErrors("imageFiles");
   };
 
   const handleRemoveVideo = (index: number) => {
-    setVideoFiles(videoFiles.filter((_, i) => i !== index));
+    setVideoFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleRemoveExistingVideo = (index: number) => {
-    setExistingVideos(existingVideos.filter((_, i) => i !== index));
+    setExistingVideos((prev) => prev.filter((_, i) => i !== index));
     clearErrors("videoFiles");
   };
 
@@ -119,72 +118,78 @@ export default function PropertyFormRH() {
     trigger(["imageFiles", "videoFiles"]);
   }, [existingImages, existingVideos, trigger]);
 
+  // Cargar datos al editar
   useEffect(() => {
-    if (id) {
-      fetch(`${API}/properties/${id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setExistingImages(data.imageUrls || []);
-          setExistingVideos(data.videoUrls || []);
-          reset({
-            ...data,
-            price: data.price?.toString() ?? undefined,
-            measure: data.measure.toString() ?? undefined,
-            environments:
-              data.extras?.includes("Vivienda") && data.environments != null
-                ? data.environments.toString()
-                : undefined,
-            bedrooms:
-              data.extras?.includes("Vivienda") && data.bedrooms != null
-                ? data.bedrooms.toString()
-                : undefined,
-            bathrooms:
-              data.extras?.includes("Vivienda") && data.bathrooms != null
-                ? data.bathrooms.toString()
-                : undefined,
-            lat: data.lat?.toString() ?? undefined,
-            lng: data.lng?.toString() ?? undefined,
-            imageUrls:
-              Array.isArray(data.imageUrls) && data.imageUrls.length
-                ? data.imageUrls
-                : [""],
-            videoUrls:
-              Array.isArray(data.videoUrls) && data.videoUrls.length
-                ? data.videoUrls
-                : [""],
-            houseMeasures:
-              data.extras?.includes("Vivienda") && data.houseMeasures != null
-                ? data.houseMeasures
-                : undefined,
-            environmentsList:
-              data.extras?.includes("Vivienda") &&
-              Array.isArray(data.environmentsList) &&
-              data.environmentsList.length
-                ? data.environmentsList
-                : undefined,
+    if (!id) return;
+    const { signal, abort } = abortable();
 
-            services: Array.isArray(data.services) ? data.services : [],
-            extras: Array.isArray(data.extras) ? data.extras : [],
-            condition:
-              data.extras?.includes("Vivienda") && data.condition
-                ? data.condition
-                : undefined,
-            age:
-              data.extras?.includes("Vivienda") && data.age
-                ? data.age
-                : undefined,
-            operationType: data.operationType ?? "",
-            location: data.location ?? "",
-            title: data.title ?? "",
-            description: data.description ?? "",
-            imageFiles: [],
-            videoFiles: [],
-          });
-          setTimeout(() => {
-            trigger(["imageFiles", "videoFiles"]);
-          }, 0);
+    api
+      .get<any>(`/properties/${id}`, { signal })
+      .then((data) => {
+        setExistingImages(data.imageUrls || []);
+        setExistingVideos(data.videoUrls || []);
+        reset({
+          ...data,
+          price: data.price?.toString() ?? undefined,
+          measure: data.measure?.toString() ?? undefined,
+          environments:
+            data.extras?.includes("Vivienda") && data.environments != null
+              ? data.environments.toString()
+              : undefined,
+          bedrooms:
+            data.extras?.includes("Vivienda") && data.bedrooms != null
+              ? data.bedrooms.toString()
+              : undefined,
+          bathrooms:
+            data.extras?.includes("Vivienda") && data.bathrooms != null
+              ? data.bathrooms.toString()
+              : undefined,
+          lat: data.lat?.toString() ?? undefined,
+          lng: data.lng?.toString() ?? undefined,
+          imageUrls:
+            Array.isArray(data.imageUrls) && data.imageUrls.length
+              ? data.imageUrls
+              : [""],
+          videoUrls:
+            Array.isArray(data.videoUrls) && data.videoUrls.length
+              ? data.videoUrls
+              : [""],
+          houseMeasures:
+            data.extras?.includes("Vivienda") && data.houseMeasures != null
+              ? data.houseMeasures
+              : undefined,
+          environmentsList:
+            data.extras?.includes("Vivienda") &&
+            Array.isArray(data.environmentsList) &&
+            data.environmentsList.length
+              ? data.environmentsList
+              : undefined,
+          services: Array.isArray(data.services) ? data.services : [],
+          extras: Array.isArray(data.extras) ? data.extras : [],
+          condition:
+            data.extras?.includes("Vivienda") && data.condition
+              ? data.condition
+              : undefined,
+          age:
+            data.extras?.includes("Vivienda") && data.age
+              ? data.age
+              : undefined,
+          operationType: data.operationType ?? "",
+          location: data.location ?? "",
+          title: data.title ?? "",
+          description: data.description ?? "",
+          imageFiles: [],
+          videoFiles: [],
         });
-    }
+        setTimeout(() => trigger(["imageFiles", "videoFiles"]), 0);
+      })
+      .catch((err) => {
+        if ((err as any)?.name !== "AbortError") {
+          console.error("Error cargando propiedad:", err);
+        }
+      });
+
+    return () => abort();
   }, [id, reset, trigger]);
 
   useEffect(() => {
@@ -228,13 +233,11 @@ export default function PropertyFormRH() {
     if (data.lng) formData.append("lng", data.lng);
     formData.append("operationType", data.operationType);
 
-    // Arrays (si existen)
-    (data.services || []).forEach((s: string) =>
-      formData.append("services[]", s)
-    );
+    // Arrays
+    (data.services || []).forEach((s: string) => formData.append("services[]", s));
     (data.extras || []).forEach((e: string) => formData.append("extras[]", e));
 
-    // Vivienda extras condicionales
+    // Vivienda condicional
     if (data.extras?.includes("Vivienda")) {
       if (data.environments) formData.append("environments", data.environments);
       (data.environmentsList || []).forEach((v: string) =>
@@ -244,35 +247,23 @@ export default function PropertyFormRH() {
       if (data.bathrooms) formData.append("bathrooms", data.bathrooms);
       if (data.condition) formData.append("condition", data.condition);
       if (data.age) formData.append("age", data.age);
-      if (data.houseMeasures)
-        formData.append("houseMeasures", data.houseMeasures);
+      if (data.houseMeasures) formData.append("houseMeasures", data.houseMeasures);
     }
 
-    // Agregá los archivos:
+    // Archivos
     existingImages.forEach((url) => formData.append("keepImages", url));
     imageFiles.forEach((file) => formData.append("images", file));
-
     existingVideos.forEach((url) => formData.append("keepVideos", url));
     videoFiles.forEach((file) => formData.append("videos", file));
 
     setTriedSubmit(false);
 
     const isEdit = Boolean(id);
-    const url = isEdit
-      ? `${API}/properties/${id}`
-      : `${API}/properties`;
+    const path = isEdit ? `/properties/${id}` : "/properties";
+    const method = isEdit ? "PUT" : "POST";
 
     try {
-      const res = await fetch(url, {
-        method: isEdit ? "PUT" : "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Error en el servidor");
-      }
-
+      await api(path, method, { body: formData });
       navigate("/admin/dashboard");
     } catch (err: any) {
       alert("Error al guardar la propiedad: " + (err.message || err));
@@ -285,8 +276,8 @@ export default function PropertyFormRH() {
 
   return (
     <div className="min-h-screen flex items-center justify-center py-10 bg-transparent">
-      <div className="w-full max-w-2xl bg-crema rounded-2xl shadow-xl px-6 sm:px-10 py-8 animate-fade-in border border-[#ebdbb9] !text-[#514737]">
-        <h1 className="text-2xl font-bold mb-6 text-center text-[#594317]">
+      <div className="w-full max-w-2xl bg-crema rounded-2xl shadow-xl px-6 sm:px-10 py-8 animate-fade-in border border-[#ebdbb9]">
+        <h1 className="text-2xl font-bold mb-6 text-center">
           {isEdit ? "Editar Propiedad" : "Nueva Propiedad"}
         </h1>
 
@@ -299,14 +290,14 @@ export default function PropertyFormRH() {
           <div>
             <label
               htmlFor="title"
-              className="block font-semibold mb-1 text-[#594317]"
+              className="block font-semibold mb-1"
             >
               Título
             </label>
             <input
               {...register("title")}
               placeholder="Título"
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.title && (
               <p className="text-red-500 text-sm mt-1">
@@ -319,7 +310,7 @@ export default function PropertyFormRH() {
           <div>
             <label
               htmlFor="description"
-              className="block font-semibold mb-1 text-[#594317]"
+              className="block font-semibold mb-1"
             >
               Descripción
             </label>
@@ -327,7 +318,7 @@ export default function PropertyFormRH() {
               {...register("description")}
               rows={3}
               placeholder="Descripción"
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] resize-none focus:outline-primary focus:border-[#ffe8ad] transition"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] resize-none focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.description && (
               <p className="text-red-500 text-sm mt-1">
@@ -338,12 +329,12 @@ export default function PropertyFormRH() {
 
           {/* Tipo de operación */}
           <div>
-            <label className="block font-semibold mb-1 text-[#594317]">
+            <label className="block font-semibold mb-1">
               Tipo de operación
             </label>
             <select
               {...register("operationType")}
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] focus:outline-primary focus:border-[#ffe8ad] transition"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 focus:outline-primary focus:border-[#ffe8ad] transition"
               defaultValue=""
             >
               <option value="">Tipo de operación</option>
@@ -365,7 +356,7 @@ export default function PropertyFormRH() {
             <div>
               <label
                 htmlFor="price"
-                className="block font-semibold mb-1 text-[#594317]"
+                className="block font-semibold mb-1"
               >
                 Precio
               </label>
@@ -373,7 +364,7 @@ export default function PropertyFormRH() {
                 {...register("price")}
                 type="number"
                 placeholder="Precio"
-                className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
               />
               {errors.price && (
                 <p className="text-red-500 text-sm mt-1">
@@ -387,7 +378,7 @@ export default function PropertyFormRH() {
           <div>
             <label
               htmlFor="measure"
-              className="block font-semibold mb-1 text-[#594317]"
+              className="block font-semibold mb-1"
             >
               Hectáreas
             </label>
@@ -395,7 +386,7 @@ export default function PropertyFormRH() {
               {...register("measure", { valueAsNumber: true })}
               type="number"
               placeholder="Ej: 150 (en ha)"
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.measure && (
               <p className="text-red-500 text-sm mt-1">
@@ -408,14 +399,14 @@ export default function PropertyFormRH() {
           <div>
             <label
               htmlFor="location"
-              className="block font-semibold mb-1 text-[#594317]"
+              className="block font-semibold mb-1"
             >
               Ubicación
             </label>
             <input
               {...register("location")}
               placeholder="Ubicación"
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.location && (
               <p className="text-red-500 text-sm mt-1">
@@ -426,7 +417,7 @@ export default function PropertyFormRH() {
 
           {/* Mapa / Lat Lng */}
           <div>
-            <label className="block font-semibold mb-1 text-[#594317]">
+            <label className="block font-semibold mb-1">
               Ubicación en el mapa
             </label>
             <div className="h-64 w-full rounded-xl overflow-hidden mb-2 border border-[#ebdbb9] bg-crema-strong">
@@ -455,14 +446,14 @@ export default function PropertyFormRH() {
                 {...register("lat")}
                 type="number"
                 placeholder="Latitud"
-                className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468]"
+                className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468]"
                 readOnly
               />
               <input
                 {...register("lng")}
                 type="number"
                 placeholder="Longitud"
-                className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468]"
+                className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468]"
                 readOnly
               />
             </div>
@@ -473,7 +464,7 @@ export default function PropertyFormRH() {
 
           {/* Imágenes */}
           <div>
-            <label className="block font-semibold mb-1 text-[#594317]">
+            <label className="block font-semibold mb-1">
               Imágenes
             </label>
             <input
@@ -481,7 +472,7 @@ export default function PropertyFormRH() {
               accept="image/*"
               multiple
               onChange={handleImageChange}
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317]"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90"
             />
 
             <div className="flex gap-2 mt-2 flex-wrap">
@@ -531,7 +522,7 @@ export default function PropertyFormRH() {
 
           {/* Videos */}
           <div>
-            <label className="block font-semibold mb-1 text-[#594317]">
+            <label className="block font-semibold mb-1">
               Videos
             </label>
             <input
@@ -539,7 +530,7 @@ export default function PropertyFormRH() {
               accept="video/*"
               multiple
               onChange={handleVideoChange}
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317]"
+              className="w-full p-2 border rounded bg-[#fcf7ea]/90"
             />
 
             <div className="flex gap-2 mt-2 flex-wrap">
@@ -593,7 +584,7 @@ export default function PropertyFormRH() {
               <div>
                 <label
                   htmlFor="houseMeasures"
-                  className="block font-semibold mb-1 text-[#594317]"
+                  className="block font-semibold mb-1"
                 >
                   Superficie (Vivienda)
                 </label>
@@ -601,7 +592,7 @@ export default function PropertyFormRH() {
                   {...register("houseMeasures", { valueAsNumber: true })}
                   type="number"
                   placeholder="Ej: 150 (en m²)"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.houseMeasures && (
                   <p className="text-red-500 text-sm mt-1">
@@ -611,14 +602,14 @@ export default function PropertyFormRH() {
               </div>
 
               <div>
-                <label className="block font-semibold mb-1 text-[#594317]">
+                <label className="block font-semibold mb-1">
                   Cantidad de ambientes
                 </label>
                 <input
                   {...register("environments")}
                   type="number"
                   placeholder="Ambientes"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.environments && (
                   <p className="text-red-500 text-sm mt-1">
@@ -674,14 +665,14 @@ export default function PropertyFormRH() {
               />
 
               <div>
-                <label className="block font-semibold mb-1 text-[#594317]">
+                <label className="block font-semibold mb-1">
                   Dormitorios
                 </label>
                 <input
                   {...register("bedrooms")}
                   type="number"
                   placeholder="Dormitorios"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.bedrooms && (
                   <p className="text-red-500 text-sm mt-1">
@@ -691,14 +682,14 @@ export default function PropertyFormRH() {
               </div>
 
               <div>
-                <label className="block font-semibold mb-1 text-[#594317]">
+                <label className="block font-semibold mb-1">
                   Baños
                 </label>
                 <input
                   {...register("bathrooms")}
                   type="number"
                   placeholder="Baños"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.bathrooms && (
                   <p className="text-red-500 text-sm mt-1">
@@ -708,13 +699,13 @@ export default function PropertyFormRH() {
               </div>
 
               <div>
-                <label className="block font-semibold mb-1 text-[#594317]">
+                <label className="block font-semibold mb-1">
                   Condición
                 </label>
                 <input
                   {...register("condition")}
                   placeholder="Condición"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.condition && (
                   <p className="text-red-500 text-sm mt-1">
@@ -724,13 +715,13 @@ export default function PropertyFormRH() {
               </div>
 
               <div>
-                <label className="block font-semibold mb-1 text-[#594317]">
+                <label className="block font-semibold mb-1">
                   Antigüedad
                 </label>
                 <input
                   {...register("age")}
                   placeholder="Antigüedad"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
                 />
                 {errors.age && (
                   <p className="text-red-500 text-sm mt-1">
@@ -745,7 +736,7 @@ export default function PropertyFormRH() {
           <div>
             <label
               htmlFor="services"
-              className="block font-semibold mb-1 text-[#594317]"
+              className="block font-semibold mb-1"
             >
               Servicios
             </label>
@@ -767,7 +758,7 @@ export default function PropertyFormRH() {
           <div>
             <label
               htmlFor="extras"
-              className="block font-semibold mb-1 text-[#594317]"
+              className="block font-semibold mb-1"
             >
               Extras
             </label>
@@ -789,7 +780,7 @@ export default function PropertyFormRH() {
           {/* Submit */}
           <button
             type="submit"
-            className="w-full py-2 rounded-lg font-semibold shadow bg-[#ffe8ad] text-[#594317] hover:bg-[#f5e3b8] hover:text-[#ad924a] transition-all duration-200 active:scale-95 border border-[#ebdbb9] cursor-pointer"
+            className="w-full py-2 rounded-lg font-semibold shadow bg-[#ffe8ad] hover:bg-[#f5e3b8] hover:text-[#ad924a] transition-all duration-200 active:scale-95 border border-[#ebdbb9] cursor-pointer"
           >
             Guardar propiedad
           </button>
