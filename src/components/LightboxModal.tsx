@@ -38,16 +38,8 @@ const swipeConfidenceThreshold = 60;
 export function LightboxModal({
   media,
   currentIndex,
-  setCurrentIndex,
   onClose,
 }: LightboxModalProps) {
-  // Prevent scroll while modal open
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
 
   const [[index, direction], setIndex] = useState<[number, number]>([
     currentIndex,
@@ -65,22 +57,6 @@ export function LightboxModal({
       else paginate(-1); // swipe derecha
     }
   }
-
-  const handlePrev = () =>
-    setCurrentIndex((currentIndex - 1 + media.length) % media.length);
-  const handleNext = () => setCurrentIndex((currentIndex + 1) % media.length);
-
-  // Keyboard navigation (esc, left, right)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "ArrowRight") handleNext();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line
-  }, [currentIndex, media.length]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";

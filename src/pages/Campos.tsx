@@ -65,7 +65,7 @@ export default function Campos({ operationType }: CamposProps) {
 
   return (
     <div className="max-w-5xl mx-auto px-2 sm:px-4 py-8">
-      <div className="bg-crema rounded-2xl shadow-xl p-4 sm:p-8 animate-fade-in !important border border-[#ebdbb9]">
+      <div className="bg-crema rounded-2xl shadow-xl p-4 sm:p-8 animate-fade-in border border-[#ebdbb9]">
         <h1 className="text-3xl font-bold mb-6 drop-shadow">
           {operationType === "Venta"
             ? "Campos en venta"
