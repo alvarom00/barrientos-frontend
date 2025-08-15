@@ -17,9 +17,7 @@ const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 
 export default function PropertyFormRH() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [existingVideos, setExistingVideos] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [videoFiles, setVideoFiles] = useState<File[]>([]);
   const API_URL = import.meta.env.VITE_API_URL; // Solo para preview de assets existentes
 
   const {
@@ -37,12 +35,13 @@ export default function PropertyFormRH() {
     resolver: yupResolver(propertySchema),
     context: {
       existingImages,
-      existingVideos,
+      // ya no usamos existingVideos
     },
     mode: "onChange",
     defaultValues: {
       imageFiles: [],
-      videoFiles: [],
+      // 👇 nuevo: lista de URLs de video
+      videoUrls: [""],
     },
   });
 
@@ -89,13 +88,6 @@ export default function PropertyFormRH() {
     setValue("imageFiles", [...imageFiles, ...files], { shouldValidate: true });
   };
 
-  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
-    setVideoFiles((prev) => [...prev, ...files]);
-    setValue("videoFiles", [...videoFiles, ...files], { shouldValidate: true });
-  };
-
   const handleRemoveImage = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -105,18 +97,10 @@ export default function PropertyFormRH() {
     clearErrors("imageFiles");
   };
 
-  const handleRemoveVideo = (index: number) => {
-    setVideoFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleRemoveExistingVideo = (index: number) => {
-    setExistingVideos((prev) => prev.filter((_, i) => i !== index));
-    clearErrors("videoFiles");
-  };
-
+  // Validar imágenes cuando cambia la lista existente
   useEffect(() => {
-    trigger(["imageFiles", "videoFiles"]);
-  }, [existingImages, existingVideos, trigger]);
+    trigger(["imageFiles"]);
+  }, [existingImages, trigger]);
 
   // Cargar datos al editar
   useEffect(() => {
@@ -127,7 +111,6 @@ export default function PropertyFormRH() {
       .get<any>(`/properties/${id}`, { signal })
       .then((data) => {
         setExistingImages(data.imageUrls || []);
-        setExistingVideos(data.videoUrls || []);
         reset({
           ...data,
           price: data.price?.toString() ?? undefined,
@@ -150,6 +133,7 @@ export default function PropertyFormRH() {
             Array.isArray(data.imageUrls) && data.imageUrls.length
               ? data.imageUrls
               : [""],
+          // 👇 ahora `videoUrls` viene del backend y se edita como lista
           videoUrls:
             Array.isArray(data.videoUrls) && data.videoUrls.length
               ? data.videoUrls
@@ -179,9 +163,8 @@ export default function PropertyFormRH() {
           title: data.title ?? "",
           description: data.description ?? "",
           imageFiles: [],
-          videoFiles: [],
         });
-        setTimeout(() => trigger(["imageFiles", "videoFiles"]), 0);
+        setTimeout(() => trigger(["imageFiles"]), 0);
       })
       .catch((err) => {
         if ((err as any)?.name !== "AbortError") {
@@ -234,7 +217,9 @@ export default function PropertyFormRH() {
     formData.append("operationType", data.operationType);
 
     // Arrays
-    (data.services || []).forEach((s: string) => formData.append("services[]", s));
+    (data.services || []).forEach((s: string) =>
+      formData.append("services[]", s)
+    );
     (data.extras || []).forEach((e: string) => formData.append("extras[]", e));
 
     // Vivienda condicional
@@ -247,14 +232,19 @@ export default function PropertyFormRH() {
       if (data.bathrooms) formData.append("bathrooms", data.bathrooms);
       if (data.condition) formData.append("condition", data.condition);
       if (data.age) formData.append("age", data.age);
-      if (data.houseMeasures) formData.append("houseMeasures", data.houseMeasures);
+      if (data.houseMeasures)
+        formData.append("houseMeasures", data.houseMeasures);
     }
 
-    // Archivos
+    // 🖼️ Imágenes (igual que antes)
     existingImages.forEach((url) => formData.append("keepImages", url));
     imageFiles.forEach((file) => formData.append("images", file));
-    existingVideos.forEach((url) => formData.append("keepVideos", url));
-    videoFiles.forEach((file) => formData.append("videos", file));
+
+    // 🎥 Videos por URL (NUEVO)
+    (data.videoUrls || [])
+      .map((u: string) => (u ?? "").trim())
+      .filter(Boolean)
+      .forEach((u: string) => formData.append("videoUrls[]", u));
 
     setTriedSubmit(false);
 
@@ -288,10 +278,7 @@ export default function PropertyFormRH() {
         >
           {/* Título */}
           <div>
-            <label
-              htmlFor="title"
-              className="block font-semibold mb-1"
-            >
+            <label htmlFor="title" className="block font-semibold mb-1">
               Título
             </label>
             <input
@@ -301,17 +288,14 @@ export default function PropertyFormRH() {
             />
             {errors.title && (
               <p className="text-red-500 text-sm mt-1">
-                {errors.title.message}
+                {errors.title.message as string}
               </p>
             )}
           </div>
 
           {/* Descripción */}
           <div>
-            <label
-              htmlFor="description"
-              className="block font-semibold mb-1"
-            >
+            <label htmlFor="description" className="block font-semibold mb-1">
               Descripción
             </label>
             <textarea
@@ -322,7 +306,7 @@ export default function PropertyFormRH() {
             />
             {errors.description && (
               <p className="text-red-500 text-sm mt-1">
-                {errors.description.message}
+                {errors.description.message as string}
               </p>
             )}
           </div>
@@ -346,7 +330,7 @@ export default function PropertyFormRH() {
             </select>
             {errors.operationType && (
               <p className="text-red-500 text-sm mt-1">
-                {errors.operationType.message}
+                {errors.operationType.message as string}
               </p>
             )}
           </div>
@@ -354,10 +338,7 @@ export default function PropertyFormRH() {
           {/* Precio (solo venta) */}
           {operationType !== "Arrendamiento" && (
             <div>
-              <label
-                htmlFor="price"
-                className="block font-semibold mb-1"
-              >
+              <label htmlFor="price" className="block font-semibold mb-1">
                 Precio
               </label>
               <input
@@ -368,7 +349,7 @@ export default function PropertyFormRH() {
               />
               {errors.price && (
                 <p className="text-red-500 text-sm mt-1">
-                  {errors.price.message}
+                  {errors.price.message as string}
                 </p>
               )}
             </div>
@@ -376,10 +357,7 @@ export default function PropertyFormRH() {
 
           {/* Hectáreas */}
           <div>
-            <label
-              htmlFor="measure"
-              className="block font-semibold mb-1"
-            >
+            <label htmlFor="measure" className="block font-semibold mb-1">
               Hectáreas
             </label>
             <input
@@ -390,17 +368,14 @@ export default function PropertyFormRH() {
             />
             {errors.measure && (
               <p className="text-red-500 text-sm mt-1">
-                {errors.measure.message}
+                {errors.measure.message as string}
               </p>
             )}
           </div>
 
           {/* Ubicación */}
           <div>
-            <label
-              htmlFor="location"
-              className="block font-semibold mb-1"
-            >
+            <label htmlFor="location" className="block font-semibold mb-1">
               Ubicación
             </label>
             <input
@@ -410,7 +385,7 @@ export default function PropertyFormRH() {
             />
             {errors.location && (
               <p className="text-red-500 text-sm mt-1">
-                {errors.location.message}
+                {errors.location.message as string}
               </p>
             )}
           </div>
@@ -458,15 +433,13 @@ export default function PropertyFormRH() {
               />
             </div>
             <p className="text-red-500 text-sm mt-1">
-              {errors.lat?.message || errors.lng?.message}
+              {(errors as any).lat?.message || (errors as any).lng?.message}
             </p>
           </div>
 
           {/* Imágenes */}
           <div>
-            <label className="block font-semibold mb-1">
-              Imágenes
-            </label>
+            <label className="block font-semibold mb-1">Imágenes</label>
             <input
               type="file"
               accept="image/*"
@@ -481,7 +454,8 @@ export default function PropertyFormRH() {
                   <img
                     src={`${API_URL}${url}`}
                     alt={`img-${i}`}
-                    className="w-full h-full object-cover rounded border border-[#ebdbb9]"
+                    className="w-full h-full object-cover rounded border border-[#ebdbb9] loading-lazy"
+                    loading="lazy"
                   />
                   <button
                     type="button"
@@ -512,232 +486,62 @@ export default function PropertyFormRH() {
               ))}
             </div>
 
-            {errors.imageFiles &&
-              typeof errors.imageFiles.message === "string" && (
+            {(errors as any).imageFiles &&
+              typeof (errors as any).imageFiles.message === "string" && (
                 <p className="text-red-500 text-sm mt-1">
-                  {errors.imageFiles.message}
+                  {(errors as any).imageFiles.message}
                 </p>
               )}
           </div>
 
-          {/* Videos */}
-          <div>
-            <label className="block font-semibold mb-1">
-              Videos
-            </label>
-            <input
-              type="file"
-              accept="video/*"
-              multiple
-              onChange={handleVideoChange}
-              className="w-full p-2 border rounded bg-[#fcf7ea]/90"
-            />
+          {/* 🎥 Videos por URL (DynamicList) */}
+          <Controller
+            name="videoUrls"
+            control={control}
+            render={({ field }) => {
+              const toStrArr = (arr: unknown): string[] =>
+                Array.isArray(arr) ? arr.map((v) => (v ?? "") as string) : [""];
 
-            <div className="flex gap-2 mt-2 flex-wrap">
-              {existingVideos.map((url, i) => (
-                <div key={`exist-video-${i}`} className="relative w-24 h-16">
-                  <video
-                    src={`${API_URL}${url}`}
-                    className="w-full h-full rounded border border-[#ebdbb9]"
-                    controls
+              const items = toStrArr(field.value);
+
+              return (
+                <div>
+                  <DynamicList
+                    label="Videos (URLs de YouTube / Vimeo / MP4)"
+                    items={items}
+                    placeholder="https://www.youtube.com/watch?v=XXXXXXXX"
+                    onChange={(i, v) =>
+                      field.onChange(
+                        items.map((x, ix) => (ix === i ? String(v ?? "") : x))
+                      )
+                    }
+                    onAdd={() => field.onChange([...items, ""])}
+                    onRemove={(i) =>
+                      field.onChange(items.filter((_, ix) => ix !== i))
+                    }
                   />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveExistingVideo(i)}
-                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                    title="Borrar video"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              {videoFiles.map((file, i) => (
-                <div key={`new-video-${i}`} className="relative w-24 h-16">
-                  <video
-                    src={URL.createObjectURL(file)}
-                    className="w-full h-full rounded border border-[#ebdbb9]"
-                    controls
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveVideo(i)}
-                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                    title="Borrar video"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {errors.videoFiles &&
-              typeof errors.videoFiles.message === "string" && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.videoFiles.message}
-                </p>
-              )}
-          </div>
-
-          {/* Campos de Vivienda (condicional) */}
-          {hasVivienda && (
-            <>
-              <div>
-                <label
-                  htmlFor="houseMeasures"
-                  className="block font-semibold mb-1"
-                >
-                  Superficie (Vivienda)
-                </label>
-                <input
-                  {...register("houseMeasures", { valueAsNumber: true })}
-                  type="number"
-                  placeholder="Ej: 150 (en m²)"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                />
-                {errors.houseMeasures && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.houseMeasures.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">
-                  Cantidad de ambientes
-                </label>
-                <input
-                  {...register("environments")}
-                  type="number"
-                  placeholder="Ambientes"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                />
-                {errors.environments && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.environments.message}
-                  </p>
-                )}
-              </div>
-
-              <Controller
-                name="environmentsList"
-                control={control}
-                render={({ field }) => (
-                  <>
-                    <DynamicList
-                      label="Ambientes (detalle)"
-                      items={
-                        Array.isArray(field.value) && field.value.length > 0
-                          ? field.value
-                          : [""]
-                      }
-                      onChange={(i, v) =>
-                        field.onChange(
-                          (field.value ?? [""]).map((x, ix) =>
-                            ix === i ? v : x
-                          )
+                  {(errors as any).videoUrls?.message && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {(errors as any).videoUrls.message}
+                    </p>
+                  )}
+                  {Array.isArray((errors as any).videoUrls) &&
+                    (errors as any).videoUrls.map(
+                      (err: any, i: number) =>
+                        err && (
+                          <p key={i} className="text-red-500 text-sm">
+                            Video {i + 1}: {err?.message}
+                          </p>
                         )
-                      }
-                      onAdd={() =>
-                        field.onChange([...(field.value ?? [""]), ""])
-                      }
-                      onRemove={(i) =>
-                        field.onChange(
-                          (field.value ?? [""]).filter((_, ix) => ix !== i)
-                        )
-                      }
-                    />
-                    {errors.environmentsList?.message && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.environmentsList.message}
-                      </p>
                     )}
-                    {Array.isArray(errors.environmentsList) &&
-                      errors.environmentsList.map(
-                        (err, i) =>
-                          err && (
-                            <p key={i} className="text-red-500 text-sm">
-                              Ambiente {i + 1}: {err?.message}
-                            </p>
-                          )
-                      )}
-                  </>
-                )}
-              />
-
-              <div>
-                <label className="block font-semibold mb-1">
-                  Dormitorios
-                </label>
-                <input
-                  {...register("bedrooms")}
-                  type="number"
-                  placeholder="Dormitorios"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                />
-                {errors.bedrooms && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.bedrooms.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">
-                  Baños
-                </label>
-                <input
-                  {...register("bathrooms")}
-                  type="number"
-                  placeholder="Baños"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                />
-                {errors.bathrooms && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.bathrooms.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">
-                  Condición
-                </label>
-                <input
-                  {...register("condition")}
-                  placeholder="Condición"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                />
-                {errors.condition && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.condition.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">
-                  Antigüedad
-                </label>
-                <input
-                  {...register("age")}
-                  placeholder="Antigüedad"
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                />
-                {errors.age && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.age.message}
-                  </p>
-                )}
-              </div>
-            </>
-          )}
+                </div>
+              );
+            }}
+          />
 
           {/* Servicios / Extras */}
           <div>
-            <label
-              htmlFor="services"
-              className="block font-semibold mb-1"
-            >
+            <label htmlFor="services" className="block font-semibold mb-1">
               Servicios
             </label>
             <Controller
@@ -756,10 +560,7 @@ export default function PropertyFormRH() {
           </div>
 
           <div>
-            <label
-              htmlFor="extras"
-              className="block font-semibold mb-1"
-            >
+            <label htmlFor="extras" className="block font-semibold mb-1">
               Extras
             </label>
             <Controller

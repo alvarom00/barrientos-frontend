@@ -1,26 +1,43 @@
 import * as yup from "yup";
 
+// Helper para validar URLs http(s)
+const isValidUrl = (value?: string) => {
+  if (!value) return true; // permitimos string vacío; el array se limpia al guardar
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export const propertySchema = yup.object().shape({
   title: yup
     .string()
     .min(5, "Mínimo 5 caracteres")
     .max(120, "Máx. 120")
     .required("Título requerido"),
+
   description: yup
     .string()
     .min(10, "Muy corto")
     .max(2000, "Demasiado largo")
     .required("Descripción requerida"),
+
   price: yup
-  .number()
-  .transform((value, originalValue) =>
-    originalValue === "" || originalValue === undefined ? null : value
-  )
-  .when("operationType", {
-    is: "Venta",
-    then: (schema) => schema.required("El precio es obligatorio").typeError("El precio debe ser un número"),
-    otherwise: (schema) => schema.notRequired().nullable(),
-  }),
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" || originalValue === undefined ? null : value
+    )
+    .when("operationType", {
+      is: "Venta",
+      then: (schema) =>
+        schema
+          .required("El precio es obligatorio")
+          .typeError("El precio debe ser un número"),
+      otherwise: (schema) => schema.notRequired().nullable(),
+    }),
+
   operationType: yup.string().required("Operación requerida"),
 
   // Solo requeridos si hay "Vivienda" en extras:
@@ -54,6 +71,7 @@ export const propertySchema = yup.object().shape({
       then: (s) => s.required("La lista de ambientes es obligatoria."),
       otherwise: (s) => s.notRequired(),
     }),
+
   bedrooms: yup
     .number()
     .nullable()
@@ -95,6 +113,7 @@ export const propertySchema = yup.object().shape({
         .required("Condición requerida"),
     otherwise: (s) => s.notRequired(),
   }),
+
   age: yup.string().when("extras", {
     is: (extras: string[] = []) => extras.includes("Vivienda"),
     then: (s) =>
@@ -107,12 +126,14 @@ export const propertySchema = yup.object().shape({
 
   // Campos siempre requeridos
   location: yup.string().required("Ubicación requerida"),
+
   lat: yup
     .number()
     .typeError("La latitud debe ser un número válido entre -90 y 90.")
     .min(-90, "La latitud mínima es -90.")
     .max(90, "La latitud máxima es 90.")
     .required("La latitud es obligatoria"),
+
   lng: yup
     .number()
     .typeError("La longitud debe ser un número válido entre -180 y 180.")
@@ -120,17 +141,32 @@ export const propertySchema = yup.object().shape({
     .max(180, "La longitud máxima es 180.")
     .required("La longitud es obligatoria"),
 
-  // Arrays para imágenes y features
+  // Imágenes (al menos una, entre nuevas o existentes)
   imageFiles: yup
     .mixed()
     .test("required", "Debes subir al menos una imagen.", function (value) {
       // @ts-ignore
       const { existingImages = [] } = this.options?.context || {};
       const hasNew = Array.isArray(value) && value.length > 0;
-      const hasExisting = Array.isArray(existingImages) && existingImages.length > 0;
+      const hasExisting =
+        Array.isArray(existingImages) && existingImages.length > 0;
       return hasNew || hasExisting;
     }),
-  videoFiles: yup.mixed(),
+
+  // 🎥 Videos por URL
+  videoUrls: yup
+    .array(
+      yup
+        .string()
+        .nullable()
+        .test("is-url", "Ingrese una URL válida (http/https)", (v) =>
+          isValidUrl(v ?? undefined)
+        )
+    )
+    .nullable()
+    .transform((_val, orig) =>
+      Array.isArray(orig) ? orig : orig ? [orig] : [""]
+    ),
 
   houseMeasures: yup.number().when("extras", {
     is: (extras: string[] = []) => extras.includes("Vivienda"),
@@ -141,6 +177,7 @@ export const propertySchema = yup.object().shape({
         .required("La medida es obligatoria"),
     otherwise: (s) => s.notRequired(),
   }),
+
   measure: yup
     .number()
     .typeError("Debes ingresar un número válido para las hectáreas.")

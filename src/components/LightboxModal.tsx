@@ -4,9 +4,10 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { getAssetUrl } from "../utils/getAssetUrl";
 import { motion, AnimatePresence } from "framer-motion";
+import type { MediaItem } from "./PropertyGallery";
 
 interface LightboxModalProps {
-  media: { type: "image" | "video"; url: string }[];
+  media: MediaItem[];
   initialIndex: number;
   onClose: () => void;
   currentIndex: number;
@@ -19,12 +20,7 @@ const variants = {
     opacity: 0,
     scale: 0.95,
   }),
-  center: {
-    x: 0,
-    opacity: 1,
-    scale: 1,
-    zIndex: 1,
-  },
+  center: { x: 0, opacity: 1, scale: 1, zIndex: 1 },
   exit: (direction: number) => ({
     x: direction < 0 ? 300 : -300,
     opacity: 0,
@@ -38,23 +34,23 @@ const swipeConfidenceThreshold = 60;
 export function LightboxModal({
   media,
   currentIndex,
+  setCurrentIndex,
   onClose,
 }: LightboxModalProps) {
-
   const [[index, direction], setIndex] = useState<[number, number]>([
     currentIndex,
     0,
   ]);
+  const xRef = useRef(0);
 
   function handleTouchStart(e: React.TouchEvent) {
     xRef.current = e.touches[0].clientX;
   }
-
   function handleTouchEnd(e: React.TouchEvent) {
     const dx = e.changedTouches[0].clientX - xRef.current;
     if (Math.abs(dx) > swipeConfidenceThreshold) {
-      if (dx < 0) paginate(1); // swipe izquierda
-      else paginate(-1); // swipe derecha
+      if (dx < 0) paginate(1);
+      else paginate(-1);
     }
   }
 
@@ -66,10 +62,9 @@ export function LightboxModal({
   }, []);
 
   const paginate = (newDirection: number) => {
-    setIndex([
-      (index + newDirection + media.length) % media.length,
-      newDirection,
-    ]);
+    const next = (index + newDirection + media.length) % media.length;
+    setIndex([next, newDirection]);
+    setCurrentIndex(next);
   };
 
   useEffect(() => {
@@ -83,48 +78,71 @@ export function LightboxModal({
     // eslint-disable-next-line
   }, [index, media.length]);
 
-  const xRef = useRef(0);
+  // Medidas del área visible del contenido (para mantener tamaño consistente)
+  //  - 92vw (tope 1100px) y 80vh
+  const containerStyle: React.CSSProperties = {
+    width: "min(92vw, 1100px)",
+    maxWidth: "1100px",
+    maxHeight: "80vh",
+  };
 
   return createPortal(
     <div
       className="fixed inset-0 z-1500 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onClick={onClose}
     >
-      {/* Close button */}
+      {/* Close */}
       <button
         className="absolute top-6 right-6 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition z-2000"
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         aria-label="Cerrar"
       >
         <X size={32} />
       </button>
+
       {/* Prev */}
       <button
         className={clsx(
           "absolute left-4 md:left-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
           media.length < 2 && "opacity-0 pointer-events-none"
         )}
-        onClick={() => paginate(-1)}
+        onClick={(e) => {
+          e.stopPropagation();
+          paginate(-1);
+        }}
         tabIndex={0}
         aria-label="Anterior"
       >
         <ChevronLeft size={32} />
       </button>
+
       {/* Next */}
       <button
         className={clsx(
           "absolute right-4 md:right-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
           media.length < 2 && "opacity-0 pointer-events-none"
         )}
-        onClick={() => paginate(1)}
+        onClick={(e) => {
+          e.stopPropagation();
+          paginate(1);
+        }}
         tabIndex={0}
         aria-label="Siguiente"
       >
         <ChevronRight size={32} />
       </button>
-      {/* Media con animación */}
-      <div className="max-w-full max-h-[90vh] flex items-center justify-center relative select-none">
+
+      {/* Contenido animado */}
+      <div
+        className="flex items-center justify-center relative select-none"
+        style={containerStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
         <AnimatePresence custom={direction} initial={false}>
           <motion.div
             key={index}
@@ -141,24 +159,42 @@ export function LightboxModal({
             onDragEnd={(_, { offset }) => {
               const swipe = Math.abs(offset.x) > swipeConfidenceThreshold;
               if (swipe) {
-                if (offset.x < 0) paginate(1); // izquierda
-                else paginate(-1); // derecha
+                if (offset.x < 0) paginate(1);
+                else paginate(-1);
               }
             }}
-            style={{ touchAction: "pan-y" }} // Permite scroll vertical si es necesario
+            style={{ touchAction: "pan-y" }}
           >
-            {media[index].type === "image" ? (
+            {media[index].type === "image" && (
               <img
                 src={getAssetUrl(media[index].url)}
                 alt={`Vista ${index + 1}`}
                 className="rounded-lg shadow-xl max-w-full max-h-[80vh] object-contain bg-black"
               />
-            ) : (
+            )}
+
+            {media[index].type === "video-file" && (
               <video
                 src={getAssetUrl(media[index].url)}
                 controls
+                preload="metadata"
                 className="rounded-lg shadow-xl max-w-full max-h-[80vh] bg-black"
               />
+            )}
+
+            {media[index].type === "video-embed" && (
+              <div
+                className="rounded-lg shadow-xl bg-black w-full"
+                style={{ aspectRatio: "16 / 9" }}
+              >
+                <iframe
+                  className="w-full h-full rounded-lg"
+                  src={media[index].embedSrc}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={`Video ${index + 1}`}
+                />
+              </div>
             )}
           </motion.div>
         </AnimatePresence>

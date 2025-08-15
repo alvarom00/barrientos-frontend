@@ -17,8 +17,8 @@ export default function SiteLayout() {
         <div className="max-w-6xl mx-auto px-4 py-10 grid gap-10 md:grid-cols-3">
           {/* Columna izquierda: slogan */}
           <div className="flex flex-col justify-center md:items-start items-center text-center md:text-left">
-            <p className="text-base md:text-lg font-semibold tracking-wide text-white">
-              Confianza y dedicación.
+            <p className="text-base md:text-lg tracking-wide text-white" style={{ fontFamily: "'PT Serif', serif" }}>
+              CONFIANZA Y DEDICACIÓN.
             </p>
           </div>
 
@@ -106,7 +106,7 @@ export default function SiteLayout() {
 
         {/* Línea inferior */}
         <div className="border-t border-white/10">
-          <div className="max-w-6xl mx-auto px-4 py-4 text-center text-xs text-white/60">
+          <div className="max-w-6xl mx-auto px-4 py-4 text-center text-xs text-white/60" style={{ fontFamily: "'PT Serif', serif" }}>
             Barrientos Propiedades © {new Date().getFullYear()}
           </div>
         </div>

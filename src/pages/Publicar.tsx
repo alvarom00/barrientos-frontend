@@ -41,28 +41,6 @@ const schema = yup.object().shape({
     .string()
     .oneOf(["Si", "En tramite", "No"], "Seleccione una opción")
     .required("Este campo es obligatorio"),
-  fotosVideos: yup
-    .string()
-    .oneOf(
-      [
-        "Si, ya tengo",
-        "No, necesito ayuda para crearlos",
-        "Tengo, pero quiero mejorarlos",
-      ],
-      "Seleccione una opción"
-    )
-    .required("Este campo es obligatorio"),
-  publicarRedes: yup
-    .string()
-    .oneOf(
-      [
-        "Si, con ubicacion aproximada",
-        "Si, con detalles completos",
-        "No, solo para contactos privados",
-      ],
-      "Seleccione una opción"
-    )
-    .required("Este campo es obligatorio"),
   telefono: yup
     .string()
     .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
@@ -120,10 +98,10 @@ export default function Publicar() {
       autoComplete="off"
     >
       <h1 className="text-2xl font-bold mb-4 text-center">
-        Publicar mi campo
+        PUBLICAR MI CAMPO
       </h1>
 
-      <span className="block mb-3">Completá el siguiente formulario y nos pondremos en contacto con vos.</span>
+      <span className="block mb-3" style={{ fontFamily: "'PT Serif', serif" }}>Completá el siguiente formulario y nos pondremos en contacto con vos.</span>
 
       {triedSubmit && !isValid && (
         <div className="bg-red-100 text-red-700 px-4 py-2 rounded text-center font-medium mb-2">
@@ -316,60 +294,6 @@ export default function Publicar() {
         {errors.documentacion && (
           <p className="text-red-500 text-sm mt-1">
             {errors.documentacion.message}
-          </p>
-        )}
-      </div>
-
-      {/* ¿Tenés fotos o videos del campo? */}
-      <div>
-        <label className="block font-semibold mb-1">
-          ¿Tenés fotos o videos del campo? <span className="text-red-500">*</span>
-        </label>
-        <select
-          {...register("fotosVideos")}
-          className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] focus:outline-primary focus:border-[#ffe8ad] transition"
-          defaultValue=""
-        >
-          <option value="">Seleccione una opción</option>
-          <option value="Si, ya tengo">Sí, ya tengo</option>
-          <option value="No, necesito ayuda para crearlos">
-            No, necesito ayuda para crearlos
-          </option>
-          <option value="Tengo, pero quiero mejorarlos">
-            Tengo, pero quiero mejorarlos
-          </option>
-        </select>
-        {errors.fotosVideos && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.fotosVideos.message}
-          </p>
-        )}
-      </div>
-
-      {/* ¿Estás dispuesto a que se publique el campo en redes sociales? */}
-      <div>
-        <label className="block font-semibold mb-1">
-          ¿Estás dispuesto a que se publique el campo en redes sociales? <span className="text-red-500">*</span>
-        </label>
-        <select
-          {...register("publicarRedes")}
-          className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] focus:outline-primary focus:border-[#ffe8ad] transition"
-          defaultValue=""
-        >
-          <option value="">Seleccione una opción</option>
-          <option value="Si, con ubicacion aproximada">
-            Sí, con ubicación aproximada
-          </option>
-          <option value="Si, con detalles completos">
-            Sí, con detalles completos
-          </option>
-          <option value="No, solo para contactos privados">
-            No, solo para contactos privados
-          </option>
-        </select>
-        {errors.publicarRedes && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.publicarRedes.message}
           </p>
         )}
       </div>
