@@ -18,7 +18,6 @@ const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 export default function PropertyFormRH() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const API_URL = import.meta.env.VITE_API_URL; // Solo para preview de assets existentes
 
   const {
     register,
@@ -452,7 +451,7 @@ export default function PropertyFormRH() {
               {existingImages.map((url, i) => (
                 <div key={`exist-${i}`} className="relative w-24 h-16">
                   <img
-                    src={`${API_URL}${url}`}
+                    src={url}
                     alt={`img-${i}`}
                     className="w-full h-full object-cover rounded border border-[#ebdbb9] loading-lazy"
                     loading="lazy"
