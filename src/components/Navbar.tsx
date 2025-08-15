@@ -58,17 +58,21 @@ export default function Navbar() {
           {/* Nombre: mobile en 2 líneas (centrado), desktop en 1 línea con espacio */}
           <span
             className="
-              pl-3 sm:pl-6
-              h-10 sm:h-auto
-              flex flex-col sm:flex-row sm:gap-2 sm:items-center
-              justify-center
-              leading-tight
-              text-center sm:text-left
-            "
-            style={{ display: "flex", transformOrigin: "center" }}
+    w-full sm:w-auto
+    mx-auto sm:mx-0
+    pl-6 sm:pl-10
+    h-10 sm:h-auto
+    flex flex-col sm:flex-row
+    gap-0 sm:gap-2
+    justify-center sm:justify-start
+    items-center sm:items-start
+    text-center sm:text-left
+    leading-tight
+  "
+            style={{ fontFamily: "'PT Serif', serif" }}
           >
-            <span>Barrientos</span>
-            <span>Agropropiedades</span>
+            <span className="block">BARRIENTOS</span>
+            <span className="block">PROPIEDADES</span>
           </span>
         </NavLink>
 

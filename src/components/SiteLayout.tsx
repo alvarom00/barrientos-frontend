@@ -107,7 +107,7 @@ export default function SiteLayout() {
         {/* Línea inferior */}
         <div className="border-t border-white/10">
           <div className="max-w-6xl mx-auto px-4 py-4 text-center text-xs text-white/60">
-            Barrientos Agropropiedades © {new Date().getFullYear()}
+            Barrientos Propiedades © {new Date().getFullYear()}
           </div>
         </div>
       </footer>
