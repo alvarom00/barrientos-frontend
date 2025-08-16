@@ -179,76 +179,73 @@ export default function PropertyFormRH() {
     api
       .get<any>(`/properties/${id}`, { signal })
       .then((data) => {
-        const urls: string[] = Array.isArray(data.imageUrls)
-          ? data.imageUrls
-          : [];
-        setExistingImages(urls);
+        setExistingImages(data.imageUrls || []);
+
+        const hasVivienda =
+          Array.isArray(data.extras) && data.extras.includes("Vivienda");
 
         reset({
-          title: data.title ?? "",
-          description: data.description ?? "",
-          operationType: (data.operationType as OperationType) ?? "",
-          propertyType: data.propertyType ?? "",
+          ...data,
 
-          price:
-            data.operationType === "Venta"
-              ? typeof data.price === "number"
-                ? data.price
-                : undefined
-              : undefined,
+          // numéricos (coerción segura)
+          price: data.price ?? undefined,
+          measure: data.measure ?? undefined,
+          lat: data.lat ?? undefined,
+          lng: data.lng ?? undefined,
 
-          location: data.location ?? "",
-          lat: typeof data.lat === "number" ? data.lat : undefined,
-          lng: typeof data.lng === "number" ? data.lng : undefined,
-          measure: typeof data.measure === "number" ? data.measure : undefined,
+          // ---- CAMPOS DE VIVIENDA (ahora sí seteados/normalizados) ----
+          environments: hasVivienda
+            ? data.environments ?? undefined
+            : undefined,
+          bedrooms: hasVivienda ? data.bedrooms ?? undefined : undefined,
+          bathrooms: hasVivienda ? data.bathrooms ?? undefined : undefined,
+          condition: hasVivienda ? data.condition ?? "" : undefined,
 
-          imageFiles: [],
-          existingImagesUrls: urls,
+          // 👇 antes no se seteaba
+          environmentsList: hasVivienda
+            ? Array.isArray(data.environmentsList) &&
+              data.environmentsList.length
+              ? data.environmentsList.map((s: any) => String(s ?? ""))
+              : [""]
+            : undefined,
 
+          // 👇 normalizamos a number si viniera como string
+          age: hasVivienda
+            ? data.age === 0 || data.age
+              ? Number(data.age)
+              : undefined
+            : undefined,
+
+          houseMeasures: hasVivienda
+            ? data.houseMeasures === 0 || data.houseMeasures
+              ? Number(data.houseMeasures)
+              : undefined
+            : undefined,
+          // -------------------------------------------------------------
+
+          // listas
           videoUrls:
             Array.isArray(data.videoUrls) && data.videoUrls.length
               ? data.videoUrls
               : [""],
           services: Array.isArray(data.services) ? data.services : [],
           extras: Array.isArray(data.extras) ? data.extras : [],
-          // “Vivienda” solo si corresponde
-          environments: data.extras?.includes("Vivienda")
-            ? typeof data.environments === "number"
-              ? data.environments
-              : undefined
-            : undefined,
-          bedrooms: data.extras?.includes("Vivienda")
-            ? typeof data.bedrooms === "number"
-              ? data.bedrooms
-              : undefined
-            : undefined,
-          bathrooms: data.extras?.includes("Vivienda")
-            ? typeof data.bathrooms === "number"
-              ? data.bathrooms
-              : undefined
-            : undefined,
-          condition: data.extras?.includes("Vivienda")
-            ? (data.condition as ConditionType) ?? ""
-            : undefined,
-          age: data.extras?.includes("Vivienda")
-            ? typeof data.age === "number"
-              ? data.age
-              : undefined
-            : undefined,
-          houseMeasures: data.extras?.includes("Vivienda")
-            ? typeof data.houseMeasures === "number"
-              ? data.houseMeasures
-              : undefined
-            : undefined,
+
+          operationType: data.operationType ?? "",
+          imageFiles: [],
+
+          // si lo usás para la validación de imágenes
+          existingImagesUrls: Array.isArray(data.imageUrls)
+            ? data.imageUrls
+            : [],
         });
 
-        // asegurar validación de imágenes post-reset
+        // revalidar imágenes después del reset
         setTimeout(() => trigger(["imageFiles"]), 0);
       })
       .catch((err) => {
-        if ((err as any)?.name !== "AbortError") {
+        if ((err as any)?.name !== "AbortError")
           console.error("Error cargando propiedad:", err);
-        }
       });
 
     return () => abort();
