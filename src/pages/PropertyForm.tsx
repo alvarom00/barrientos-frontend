@@ -1,6 +1,11 @@
 // src/pages/PropertyForm.tsx
 import { useEffect, useState } from "react";
-import { useForm, Controller, type Resolver, type SubmitHandler } from "react-hook-form";
+import {
+  useForm,
+  Controller,
+  type Resolver,
+  type SubmitHandler,
+} from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { propertySchema } from "../schema/propertySchema";
 import { useNavigate, useParams } from "react-router-dom";
@@ -18,7 +23,13 @@ import clsx from "clsx";
 
 // ------- Tipos del formulario (explícitos para evitar choques Yup/RHF) ------
 type OperationType = "Venta" | "Arrendamiento" | "";
-type ConditionType = "" | "Excelente" | "Muy bueno" | "Bueno" | "Regular" | "A refaccionar";
+type ConditionType =
+  | ""
+  | "Excelente"
+  | "Muy bueno"
+  | "Bueno"
+  | "Regular"
+  | "A refaccionar";
 
 type FormValues = {
   title: string;
@@ -62,9 +73,12 @@ const OPERATION_TYPES: OperationType[] = ["Venta", "Arrendamiento", ""];
 export default function PropertyFormRH() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   // forzar el resolver a nuestro tipo de FormValues
-  const resolver = yupResolver(propertySchema) as unknown as Resolver<FormValues>;
+  const resolver = yupResolver(
+    propertySchema
+  ) as unknown as Resolver<FormValues>;
 
   const {
     register,
@@ -110,7 +124,13 @@ export default function PropertyFormRH() {
   const lng = watch("lng");
   const hasVivienda = extras.includes("Vivienda");
 
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
+  const buildImgUrl = (u: string) => {
+    if (!u) return "";
+    if (/^https?:\/\//i.test(u)) return u;
+    return `${API_URL}/${u.replace(/^\//, "")}`;
+  };
 
   // ---------- Map picker ----------
   function LocationPicker({
@@ -130,7 +150,8 @@ export default function PropertyFormRH() {
       <Marker
         position={value}
         icon={L.icon({
-          iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+          iconUrl:
+            "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
           iconAnchor: [12, 41],
         })}
       />
@@ -144,6 +165,12 @@ export default function PropertyFormRH() {
     trigger("imageFiles"); // revalida la regla "al menos 1 imagen"
   }, [existingImages, setValue, trigger]);
 
+  useEffect(() => {
+    const urls = imageFiles.map((f) => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [imageFiles]);
+
   // ---------- Cargar datos al editar ----------
   useEffect(() => {
     if (!id) return;
@@ -152,7 +179,9 @@ export default function PropertyFormRH() {
     api
       .get<any>(`/properties/${id}`, { signal })
       .then((data) => {
-        const urls: string[] = Array.isArray(data.imageUrls) ? data.imageUrls : [];
+        const urls: string[] = Array.isArray(data.imageUrls)
+          ? data.imageUrls
+          : [];
         setExistingImages(urls);
 
         reset({
@@ -163,7 +192,9 @@ export default function PropertyFormRH() {
 
           price:
             data.operationType === "Venta"
-              ? (typeof data.price === "number" ? data.price : undefined)
+              ? typeof data.price === "number"
+                ? data.price
+                : undefined
               : undefined,
 
           location: data.location ?? "",
@@ -175,27 +206,39 @@ export default function PropertyFormRH() {
           existingImagesUrls: urls,
 
           videoUrls:
-            Array.isArray(data.videoUrls) && data.videoUrls.length ? data.videoUrls : [""],
+            Array.isArray(data.videoUrls) && data.videoUrls.length
+              ? data.videoUrls
+              : [""],
           services: Array.isArray(data.services) ? data.services : [],
           extras: Array.isArray(data.extras) ? data.extras : [],
           // “Vivienda” solo si corresponde
           environments: data.extras?.includes("Vivienda")
-            ? (typeof data.environments === "number" ? data.environments : undefined)
+            ? typeof data.environments === "number"
+              ? data.environments
+              : undefined
             : undefined,
           bedrooms: data.extras?.includes("Vivienda")
-            ? (typeof data.bedrooms === "number" ? data.bedrooms : undefined)
+            ? typeof data.bedrooms === "number"
+              ? data.bedrooms
+              : undefined
             : undefined,
           bathrooms: data.extras?.includes("Vivienda")
-            ? (typeof data.bathrooms === "number" ? data.bathrooms : undefined)
+            ? typeof data.bathrooms === "number"
+              ? data.bathrooms
+              : undefined
             : undefined,
           condition: data.extras?.includes("Vivienda")
-            ? ((data.condition as ConditionType) ?? "")
+            ? (data.condition as ConditionType) ?? ""
             : undefined,
           age: data.extras?.includes("Vivienda")
-            ? (typeof data.age === "number" ? data.age : undefined)
+            ? typeof data.age === "number"
+              ? data.age
+              : undefined
             : undefined,
           houseMeasures: data.extras?.includes("Vivienda")
-            ? (typeof data.houseMeasures === "number" ? data.houseMeasures : undefined)
+            ? typeof data.houseMeasures === "number"
+              ? data.houseMeasures
+              : undefined
             : undefined,
         });
 
@@ -290,7 +333,9 @@ export default function PropertyFormRH() {
     // Vivienda
     if (data.extras?.includes("Vivienda")) {
       appendIf("environments", data.environments);
-      (data.environmentsList ?? []).forEach((v) => appendIf("environmentsList[]", v));
+      (data.environmentsList ?? []).forEach((v) =>
+        appendIf("environmentsList[]", v)
+      );
       appendIf("bedrooms", data.bedrooms);
       appendIf("bathrooms", data.bathrooms);
       appendIf("condition", data.condition);
@@ -331,7 +376,11 @@ export default function PropertyFormRH() {
           {isEdit ? "Editar Propiedad" : "Nueva Propiedad"}
         </h1>
 
-        <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-6" autoComplete="off">
+        <form
+          onSubmit={handleSubmit(onSubmit, onError)}
+          className="space-y-6"
+          autoComplete="off"
+        >
           {/* Título */}
           <div>
             <label className="block font-semibold mb-1">Título</label>
@@ -340,7 +389,11 @@ export default function PropertyFormRH() {
               placeholder="Título"
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
-            {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title.message as string}</p>}
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.title.message as string}
+              </p>
+            )}
           </div>
 
           {/* Descripción */}
@@ -353,13 +406,17 @@ export default function PropertyFormRH() {
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] resize-none focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.description && (
-              <p className="text-red-500 text-sm mt-1">{errors.description.message as string}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.description.message as string}
+              </p>
             )}
           </div>
 
           {/* Tipo de operación */}
           <div>
-            <label className="block font-semibold mb-1">Tipo de operación</label>
+            <label className="block font-semibold mb-1">
+              Tipo de operación
+            </label>
             <select
               {...register("operationType")}
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 focus:outline-primary focus:border-[#ffe8ad] transition"
@@ -373,7 +430,9 @@ export default function PropertyFormRH() {
               ))}
             </select>
             {errors.operationType && (
-              <p className="text-red-500 text-sm mt-1">{errors.operationType.message as string}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.operationType.message as string}
+              </p>
             )}
           </div>
 
@@ -387,7 +446,11 @@ export default function PropertyFormRH() {
                 placeholder="Precio"
                 className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
               />
-              {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message as string}</p>}
+              {errors.price && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.price.message as string}
+                </p>
+              )}
             </div>
           )}
 
@@ -400,7 +463,11 @@ export default function PropertyFormRH() {
               placeholder="Ej: 150 (en ha)"
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
-            {errors.measure && <p className="text-red-500 text-sm mt-1">{errors.measure.message as string}</p>}
+            {errors.measure && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.measure.message as string}
+              </p>
+            )}
           </div>
 
           {/* Ubicación */}
@@ -412,13 +479,17 @@ export default function PropertyFormRH() {
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.location && (
-              <p className="text-red-500 text-sm mt-1">{errors.location.message as string}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.location.message as string}
+              </p>
             )}
           </div>
 
           {/* Mapa / Lat Lng */}
           <div>
-            <label className="block font-semibold mb-1">Ubicación en el mapa</label>
+            <label className="block font-semibold mb-1">
+              Ubicación en el mapa
+            </label>
             <div className="h-64 w-full rounded-xl overflow-hidden mb-2 border border-[#ebdbb9] bg-crema-strong">
               <MapContainer
                 center={lat && lng ? [lat, lng] : [-36, -65]}
@@ -426,12 +497,21 @@ export default function PropertyFormRH() {
                 className="h-full w-full"
                 style={{ height: 256 }}
               >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap contributors"
+                />
                 <LocationPicker
                   value={lat && lng ? { lat, lng } : null}
                   onChange={({ lat, lng }) => {
-                    setValue("lat", lat, { shouldValidate: true, shouldDirty: true });
-                    setValue("lng", lng, { shouldValidate: true, shouldDirty: true });
+                    setValue("lat", lat, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    setValue("lng", lng, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
                   }}
                 />
               </MapContainer>
@@ -467,15 +547,17 @@ export default function PropertyFormRH() {
               onChange={handleImageChange}
               className="w-full p-2 border rounded bg-[#fcf7ea]/90"
             />
+
             {/* registrar fields presentes en el schema */}
             <input type="hidden" {...register("imageFiles")} />
             <input type="hidden" {...register("existingImagesUrls")} />
 
             <div className="flex gap-2 mt-2 flex-wrap">
+              {/* existentes (DB / Cloudinary / ruta relativa) */}
               {existingImages.map((url, i) => (
                 <div key={`exist-${i}`} className="relative w-24 h-16">
                   <img
-                    src={/^https?:\/\//i.test(url) ? url : `${API_URL}${url}`}
+                    src={buildImgUrl(url)}
                     alt={`img-${i}`}
                     className="w-full h-full object-cover rounded border border-[#ebdbb9] loading-lazy"
                     loading="lazy"
@@ -490,11 +572,13 @@ export default function PropertyFormRH() {
                   </button>
                 </div>
               ))}
-              {imageFiles.map((file, i) => (
+
+              {/* nuevas (File[]) usando previews */}
+              {previews.map((src, i) => (
                 <div key={`new-${i}`} className="relative w-24 h-16">
                   <img
-                    src={URL.createObjectURL(file)}
-                    alt=""
+                    src={src}
+                    alt={`new-${i}`}
                     className="w-full h-full object-cover rounded border border-[#ebdbb9]"
                   />
                   <button
@@ -522,7 +606,9 @@ export default function PropertyFormRH() {
             name="videoUrls"
             control={control}
             render={({ field }) => {
-              const items = Array.isArray(field.value) ? field.value.map((v) => (v ?? "") as string) : [""];
+              const items = Array.isArray(field.value)
+                ? field.value.map((v) => (v ?? "") as string)
+                : [""];
               return (
                 <div>
                   <DynamicList
@@ -530,10 +616,14 @@ export default function PropertyFormRH() {
                     items={items}
                     placeholder="https://www.youtube.com/watch?v=XXXXXXXX"
                     onChange={(i, v) =>
-                      field.onChange(items.map((x, ix) => (ix === i ? String(v ?? "") : x)))
+                      field.onChange(
+                        items.map((x, ix) => (ix === i ? String(v ?? "") : x))
+                      )
                     }
                     onAdd={() => field.onChange([...items, ""])}
-                    onRemove={(i) => field.onChange(items.filter((_, ix) => ix !== i))}
+                    onRemove={(i) =>
+                      field.onChange(items.filter((_, ix) => ix !== i))
+                    }
                   />
                   {(errors as any).videoUrls?.message && (
                     <p className="text-red-500 text-sm mt-1">
@@ -563,7 +653,9 @@ export default function PropertyFormRH() {
               render={({ field }) => (
                 <FeatureCheckboxGroup
                   options={SERVICES}
-                  selected={(field.value ?? []).filter((x): x is string => typeof x === "string")}
+                  selected={(field.value ?? []).filter(
+                    (x): x is string => typeof x === "string"
+                  )}
                   onChange={field.onChange}
                 />
               )}
@@ -578,7 +670,9 @@ export default function PropertyFormRH() {
               render={({ field }) => (
                 <FeatureCheckboxGroup
                   options={EXTRAS}
-                  selected={(field.value ?? []).filter((x): x is string => typeof x === "string")}
+                  selected={(field.value ?? []).filter(
+                    (x): x is string => typeof x === "string"
+                  )}
                   onChange={field.onChange}
                 />
               )}
@@ -593,7 +687,9 @@ export default function PropertyFormRH() {
               {/* Números rápidos */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Ambientes (número)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Ambientes (número)
+                  </label>
                   <input
                     {...register("environments", { valueAsNumber: true })}
                     type="number"
@@ -602,11 +698,15 @@ export default function PropertyFormRH() {
                     aria-invalid={!!errors.environments}
                   />
                   {errors.environments?.message && (
-                    <p className="mt-1 text-sm text-red-500">{errors.environments.message as string}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.environments.message as string}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Dormitorios</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Dormitorios
+                  </label>
                   <input
                     {...register("bedrooms", { valueAsNumber: true })}
                     type="number"
@@ -615,11 +715,15 @@ export default function PropertyFormRH() {
                     aria-invalid={!!errors.bedrooms}
                   />
                   {errors.bedrooms?.message && (
-                    <p className="mt-1 text-sm text-red-500">{errors.bedrooms.message as string}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.bedrooms.message as string}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Baños</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Baños
+                  </label>
                   <input
                     {...register("bathrooms", { valueAsNumber: true })}
                     type="number"
@@ -628,7 +732,9 @@ export default function PropertyFormRH() {
                     aria-invalid={!!errors.bathrooms}
                   />
                   {errors.bathrooms?.message && (
-                    <p className="mt-1 text-sm text-red-500">{errors.bathrooms.message as string}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.bathrooms.message as string}
+                    </p>
                   )}
                 </div>
               </div>
@@ -636,7 +742,9 @@ export default function PropertyFormRH() {
               {/* Estado / Antigüedad */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Estado</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Estado
+                  </label>
                   <select
                     {...register("condition")}
                     className="w-full p-2 border rounded bg-[#fcf7ea]/90 focus:outline-primary focus:border-[#ffe8ad] transition"
@@ -651,11 +759,15 @@ export default function PropertyFormRH() {
                     <option value="A refaccionar">A refaccionar</option>
                   </select>
                   {errors.condition?.message && (
-                    <p className="mt-1 text-sm text-red-500">{errors.condition.message as string}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.condition.message as string}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Antigüedad (años)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Antigüedad (años)
+                  </label>
                   <input
                     {...register("age", { valueAsNumber: true })}
                     type="number"
@@ -664,7 +776,9 @@ export default function PropertyFormRH() {
                     aria-invalid={!!errors.age}
                   />
                   {errors.age?.message && (
-                    <p className="mt-1 text-sm text-red-500">{errors.age.message as string}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.age.message as string}
+                    </p>
                   )}
                 </div>
               </div>
@@ -684,10 +798,16 @@ export default function PropertyFormRH() {
                         items={items}
                         placeholder="Ej: Living, Cocina, Comedor…"
                         onChange={(i, v) =>
-                          field.onChange(items.map((x, ix) => (ix === i ? String(v ?? "") : x)))
+                          field.onChange(
+                            items.map((x, ix) =>
+                              ix === i ? String(v ?? "") : x
+                            )
+                          )
                         }
                         onAdd={() => field.onChange([...items, ""])}
-                        onRemove={(i) => field.onChange(items.filter((_, ix) => ix !== i))}
+                        onRemove={(i) =>
+                          field.onChange(items.filter((_, ix) => ix !== i))
+                        }
                       />
                       {(errors.environmentsList as any)?.message && (
                         <p className="mt-1 text-sm text-red-500">
@@ -710,7 +830,10 @@ export default function PropertyFormRH() {
               {/* Superficie cubierta (m²) */}
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Superficie cubierta <span className="opacity-75">(en m<sup>2</sup>)</span>
+                  Superficie cubierta{" "}
+                  <span className="opacity-75">
+                    (en m<sup>2</sup>)
+                  </span>
                 </label>
                 <input
                   type="number"
