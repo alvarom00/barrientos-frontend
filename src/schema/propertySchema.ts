@@ -166,13 +166,21 @@ export const propertySchema = yup.object().shape({
       otherwise: (s) => s.notRequired().nullable(),
     }),
 
-  imageFiles: yup.mixed().test("required", "Debes subir al menos una imagen.", function (value) {
-    // @ts-ignore
-    const { existingImages = [] } = this.options?.context || {};
+  imageFiles: yup
+  .mixed()
+  .test("required-images", "Debes subir al menos una imagen.", function (value) {
+    const { existingImagesCount } = this.parent as any;  // 👈 viene del form
     const hasNew = Array.isArray(value) && value.length > 0;
-    const hasExisting = Array.isArray(existingImages) && existingImages.length > 0;
+    const hasExisting = Number(existingImagesCount) > 0;
     return hasNew || hasExisting;
   }),
+  
+  existingImagesCount: yup
+  .number()
+  .transform((v, o) => (o === "" || o === undefined ? 0 : v))
+  .min(0)
+  .default(0)
+  .notRequired(),
 
   videoUrls: yup
     .array()

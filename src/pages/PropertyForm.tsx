@@ -1,5 +1,7 @@
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import type { Resolver } from "react-hook-form";
+import type { InferType } from "yup";
 import { propertySchema } from "../schema/propertySchema";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -8,7 +10,7 @@ import {
   SERVICES,
   EXTRAS,
 } from "../components/CustomInputs";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import L from "leaflet";
 import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
 import { nanoid } from "nanoid";
@@ -17,40 +19,38 @@ import clsx from "clsx";
 
 const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 
+type FormValues = InferType<typeof propertySchema> & {
+  existingImagesCount: number;
+};
+
 export default function PropertyFormRH() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-
-  const resolver = useMemo(
-    () =>
-      yupResolver(propertySchema, {
-        context: { existingImages },
-        abortEarly: false,
-      }),
-    [existingImages]
-  );
+  const resolver = yupResolver(propertySchema, { abortEarly: false }) as Resolver<FormValues>;
 
   const {
-    register,
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    getValues,
-    clearErrors,
-    reset,
-    trigger,
-    formState: { errors, isValid, isSubmitting },
-  } = useForm({
-    resolver,
-    mode: "onChange",
-    defaultValues: {
-      imageFiles: [],
-      videoUrls: [""],
-      services: [],
-      extras: [],
-    },
-  });
+  register,
+  control,
+  handleSubmit,
+  watch,
+  setValue,
+  getValues,
+  clearErrors,
+  reset,
+  trigger,
+  formState: { errors, isValid, isSubmitting },
+} = useForm<FormValues>({
+  resolver,
+  mode: "onChange",
+  defaultValues: {
+    imageFiles: [],
+    videoUrls: [""],
+    services: [],
+    extras: [],
+    existingImagesCount: 0,
+  },
+});
+
 
   useEffect(() => {
     trigger();
@@ -92,6 +92,12 @@ export default function PropertyFormRH() {
   const API_URL = import.meta.env.VITE_API_URL;
 
   const hasVivienda = extras.includes("Vivienda");
+
+  useEffect(() => {
+    setValue("existingImagesCount", existingImages.length, {
+      shouldValidate: true,
+    });
+  }, [existingImages.length, setValue]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -647,6 +653,7 @@ export default function PropertyFormRH() {
               className="w-full p-2 border rounded bg-[#fcf7ea]/90"
             />
             <input type="hidden" {...register("imageFiles")} />
+            <input type="hidden" {...register("existingImagesCount")} />
 
             <div className="flex gap-2 mt-2 flex-wrap">
               {existingImages.map((url, i) => (
