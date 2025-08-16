@@ -8,7 +8,7 @@ import {
   SERVICES,
   EXTRAS,
 } from "../components/CustomInputs";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import L from "leaflet";
 import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
 import { nanoid } from "nanoid";
@@ -20,6 +20,15 @@ const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 export default function PropertyFormRH() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+
+  const resolver = useMemo(
+    () =>
+      yupResolver(propertySchema, {
+        context: { existingImages },
+        abortEarly: false,
+      }),
+    [existingImages]
+  );
 
   const {
     register,
@@ -33,18 +42,19 @@ export default function PropertyFormRH() {
     trigger,
     formState: { errors, isValid, isSubmitting },
   } = useForm({
-    resolver: yupResolver(propertySchema),
-    context: {
-      existingImages,
-      // ya no usamos existingVideos
-    },
+    resolver,
     mode: "onChange",
     defaultValues: {
       imageFiles: [],
-      // 👇 nuevo: lista de URLs de video
       videoUrls: [""],
+      services: [],
+      extras: [],
     },
   });
+
+  useEffect(() => {
+    trigger();
+  }, [existingImages, trigger]);
 
   function LocationPicker({
     value,
