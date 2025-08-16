@@ -1,7 +1,7 @@
-import { useForm, Controller } from "react-hook-form";
+// src/pages/PropertyForm.tsx
+import { useEffect, useState } from "react";
+import { useForm, Controller, type Resolver, type SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import type { Resolver } from "react-hook-form";
-import type { InferType } from "yup";
 import { propertySchema } from "../schema/propertySchema";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -10,52 +10,109 @@ import {
   SERVICES,
   EXTRAS,
 } from "../components/CustomInputs";
-import { useEffect, useState } from "react";
 import L from "leaflet";
 import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
 import { nanoid } from "nanoid";
 import { api, abortable } from "../api";
 import clsx from "clsx";
 
-const OPERATION_TYPES = ["Venta", "Arrendamiento"];
+// ------- Tipos del formulario (explícitos para evitar choques Yup/RHF) ------
+type OperationType = "Venta" | "Arrendamiento" | "";
+type ConditionType = "" | "Excelente" | "Muy bueno" | "Bueno" | "Regular" | "A refaccionar";
 
-type FormValues = InferType<typeof propertySchema> & {
-  existingImagesCount: number;
+type FormValues = {
+  title: string;
+  description: string;
+  operationType: OperationType;
+  propertyType?: string;
+
+  // Venta: price requerido / Arrendamiento: opcional
+  price?: number | null;
+
+  location: string;
+  lat: number | undefined;
+  lng: number | undefined;
+
+  measure: number | undefined;
+
+  // imágenes nuevas (File[]) + existentes (urls) para la validación
+  imageFiles?: File[];
+  existingImagesUrls: string[];
+
+  // videos
+  videoUrls: (string | null)[] | null;
+
+  // toggles
+  services: string[];
+  extras: string[];
+
+  // “Vivienda” condicional
+  environments?: number | null;
+  environmentsList?: string[];
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  condition?: ConditionType;
+  age?: number | null;
+  houseMeasures?: number | null;
 };
 
+const OPERATION_TYPES: OperationType[] = ["Venta", "Arrendamiento", ""];
+
+// -------------------------- Componente --------------------------
 export default function PropertyFormRH() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const resolver = yupResolver(propertySchema, { abortEarly: false }) as Resolver<FormValues>;
+
+  // forzar el resolver a nuestro tipo de FormValues
+  const resolver = yupResolver(propertySchema) as unknown as Resolver<FormValues>;
 
   const {
-  register,
-  control,
-  handleSubmit,
-  watch,
-  setValue,
-  getValues,
-  clearErrors,
-  reset,
-  trigger,
-  formState: { errors, isValid, isSubmitting },
-} = useForm<FormValues>({
-  resolver,
-  mode: "onChange",
-  defaultValues: {
-    imageFiles: [],
-    videoUrls: [""],
-    services: [],
-    extras: [],
-    existingImagesCount: 0,
-  },
-});
+    register,
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    getValues,
+    clearErrors,
+    reset,
+    trigger,
+    formState: { errors, isValid, isSubmitting },
+  } = useForm<FormValues>({
+    resolver,
+    mode: "onChange",
+    defaultValues: {
+      title: "",
+      description: "",
+      operationType: "",
+      propertyType: "",
+      price: undefined,
 
+      location: "",
+      lat: undefined,
+      lng: undefined,
+      measure: undefined,
 
-  useEffect(() => {
-    trigger();
-  }, [existingImages, trigger]);
+      imageFiles: [],
+      existingImagesUrls: [],
 
+      videoUrls: [""],
+      services: [],
+      extras: [],
+    },
+  });
+
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
+  const [triedSubmit, setTriedSubmit] = useState(false);
+  const extras = watch("extras") ?? [];
+  const lat = watch("lat");
+  const lng = watch("lng");
+  const hasVivienda = extras.includes("Vivienda");
+
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  // ---------- Map picker ----------
   function LocationPicker({
     value,
     onChange,
@@ -73,32 +130,115 @@ export default function PropertyFormRH() {
       <Marker
         position={value}
         icon={L.icon({
-          iconUrl:
-            "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+          iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
           iconAnchor: [12, 41],
         })}
       />
     ) : null;
   }
 
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const isEdit = Boolean(id);
-  const [triedSubmit, setTriedSubmit] = useState(false);
-  const operationType = watch("operationType");
-  const extras = watch("extras") ?? [];
-  const lat = watch("lat");
-  const lng = watch("lng");
-  const API_URL = import.meta.env.VITE_API_URL;
-
-  const hasVivienda = extras.includes("Vivienda");
-
+  // ---------- Sincronizar campo del schema con el estado de previews ----------
+  // Cada vez que cambian las existentes -> actualizamos el field existingImagesUrls
   useEffect(() => {
-    setValue("existingImagesCount", existingImages.length, {
-      shouldValidate: true,
-    });
-  }, [existingImages.length, setValue]);
+    setValue("existingImagesUrls", existingImages, { shouldValidate: true });
+    trigger("imageFiles"); // revalida la regla "al menos 1 imagen"
+  }, [existingImages, setValue, trigger]);
 
+  // ---------- Cargar datos al editar ----------
+  useEffect(() => {
+    if (!id) return;
+    const { signal, abort } = abortable();
+
+    api
+      .get<any>(`/properties/${id}`, { signal })
+      .then((data) => {
+        const urls: string[] = Array.isArray(data.imageUrls) ? data.imageUrls : [];
+        setExistingImages(urls);
+
+        reset({
+          title: data.title ?? "",
+          description: data.description ?? "",
+          operationType: (data.operationType as OperationType) ?? "",
+          propertyType: data.propertyType ?? "",
+
+          price:
+            data.operationType === "Venta"
+              ? (typeof data.price === "number" ? data.price : undefined)
+              : undefined,
+
+          location: data.location ?? "",
+          lat: typeof data.lat === "number" ? data.lat : undefined,
+          lng: typeof data.lng === "number" ? data.lng : undefined,
+          measure: typeof data.measure === "number" ? data.measure : undefined,
+
+          imageFiles: [],
+          existingImagesUrls: urls,
+
+          videoUrls:
+            Array.isArray(data.videoUrls) && data.videoUrls.length ? data.videoUrls : [""],
+          services: Array.isArray(data.services) ? data.services : [],
+          extras: Array.isArray(data.extras) ? data.extras : [],
+          // “Vivienda” solo si corresponde
+          environments: data.extras?.includes("Vivienda")
+            ? (typeof data.environments === "number" ? data.environments : undefined)
+            : undefined,
+          bedrooms: data.extras?.includes("Vivienda")
+            ? (typeof data.bedrooms === "number" ? data.bedrooms : undefined)
+            : undefined,
+          bathrooms: data.extras?.includes("Vivienda")
+            ? (typeof data.bathrooms === "number" ? data.bathrooms : undefined)
+            : undefined,
+          condition: data.extras?.includes("Vivienda")
+            ? ((data.condition as ConditionType) ?? "")
+            : undefined,
+          age: data.extras?.includes("Vivienda")
+            ? (typeof data.age === "number" ? data.age : undefined)
+            : undefined,
+          houseMeasures: data.extras?.includes("Vivienda")
+            ? (typeof data.houseMeasures === "number" ? data.houseMeasures : undefined)
+            : undefined,
+        });
+
+        // asegurar validación de imágenes post-reset
+        setTimeout(() => trigger(["imageFiles"]), 0);
+      })
+      .catch((err) => {
+        if ((err as any)?.name !== "AbortError") {
+          console.error("Error cargando propiedad:", err);
+        }
+      });
+
+    return () => abort();
+  }, [id, reset, trigger]);
+
+  // ---------- Toggle Vivienda: limpiar / setear defaults ----------
+  useEffect(() => {
+    if (!hasVivienda) {
+      setValue("environments", undefined);
+      setValue("environmentsList", undefined);
+      setValue("bedrooms", undefined);
+      setValue("bathrooms", undefined);
+      setValue("condition", undefined);
+      setValue("age", undefined);
+      setValue("houseMeasures", undefined);
+      clearErrors([
+        "environments",
+        "environmentsList",
+        "bedrooms",
+        "bathrooms",
+        "condition",
+        "age",
+        "houseMeasures",
+      ]);
+    } else {
+      const curr = getValues("environmentsList");
+      if (!curr || curr.length === 0) {
+        setValue("environmentsList", [""]);
+      }
+    }
+  }, [hasVivienda, setValue, clearErrors, getValues]);
+
+  // ---------- Handlers imágenes ----------
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
@@ -120,105 +260,11 @@ export default function PropertyFormRH() {
 
   const handleRemoveExistingImage = (index: number) => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
-    // revalida la regla de imágenes con el nuevo context
-    trigger("imageFiles");
+    // existingImagesUrls se sincroniza en el useEffect de arriba
   };
 
-  // Validar imágenes cuando cambia la lista existente
-  useEffect(() => {
-    trigger(["imageFiles"]);
-  }, [existingImages, trigger]);
-
-  // Cargar datos al editar
-  useEffect(() => {
-    if (!id) return;
-    const { signal, abort } = abortable();
-
-    api
-      .get<any>(`/properties/${id}`, { signal })
-      .then((data) => {
-        setExistingImages(data.imageUrls || []);
-        reset({
-          ...data,
-          // numéricos como números:
-          price: data.price ?? undefined,
-          measure: data.measure ?? undefined,
-          lat: data.lat ?? undefined,
-          lng: data.lng ?? undefined,
-
-          // “Vivienda” solo si corresponde
-          environments: data.extras?.includes("Vivienda")
-            ? data.environments ?? undefined
-            : undefined,
-          bedrooms: data.extras?.includes("Vivienda")
-            ? data.bedrooms ?? undefined
-            : undefined,
-          bathrooms: data.extras?.includes("Vivienda")
-            ? data.bathrooms ?? undefined
-            : undefined,
-          condition: data.extras?.includes("Vivienda")
-            ? data.condition ?? ""
-            : undefined,
-          age: data.extras?.includes("Vivienda")
-            ? data.age ?? undefined
-            : undefined,
-          houseMeasures: data.extras?.includes("Vivienda")
-            ? data.houseMeasures ?? undefined
-            : undefined,
-
-          // listas
-          videoUrls:
-            Array.isArray(data.videoUrls) && data.videoUrls.length
-              ? data.videoUrls
-              : [""],
-          services: Array.isArray(data.services) ? data.services : [],
-          extras: Array.isArray(data.extras) ? data.extras : [],
-
-          operationType: data.operationType ?? "",
-          imageFiles: [], // siempre vacío al iniciar edición
-        });
-
-        setTimeout(() => trigger(["imageFiles"]), 0);
-      })
-      .catch((err) => {
-        if ((err as any)?.name !== "AbortError") {
-          console.error("Error cargando propiedad:", err);
-        }
-      });
-
-    return () => abort();
-  }, [id, reset, trigger]);
-
-  useEffect(() => {
-    if (!hasVivienda) {
-      setValue("environments", undefined);
-      setValue("environmentsList", undefined);
-      setValue("bedrooms", undefined);
-      setValue("bathrooms", undefined);
-      setValue("condition", undefined);
-      setValue("age", undefined);
-      setValue("houseMeasures", undefined);
-      clearErrors([
-        "environments",
-        "environmentsList",
-        "bedrooms",
-        "bathrooms",
-        "condition",
-        "age",
-        "houseMeasures",
-      ]);
-    } else {
-      if (
-        !getValues("environmentsList") ||
-        getValues("environmentsList")?.length === 0
-      ) {
-        setValue("environmentsList", [""]);
-      }
-    }
-  }, [hasVivienda, setValue, clearErrors, getValues]);
-
-  const onSubmit = async (data: any) => {
-    // RHF maneja isSubmitting, pero este guard evita carreras si alguien llama onSubmit directo
+  // ---------- Submit ----------
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
     if (isSubmitting) return;
 
     const fd = new FormData();
@@ -226,7 +272,7 @@ export default function PropertyFormRH() {
       if (v !== undefined && v !== null && v !== "") fd.append(k, String(v));
     };
 
-    // Campos básicos
+    // Básicos
     fd.append("title", data.title);
     fd.append("description", data.description);
     appendIf("price", data.price);
@@ -238,15 +284,13 @@ export default function PropertyFormRH() {
     if (data.propertyType) fd.append("propertyType", data.propertyType);
 
     // Arrays
-    (data.services ?? []).forEach((s: string) => appendIf("services[]", s));
-    (data.extras ?? []).forEach((e: string) => appendIf("extras[]", e));
+    (data.services ?? []).forEach((s) => appendIf("services[]", s));
+    (data.extras ?? []).forEach((e) => appendIf("extras[]", e));
 
-    // Vivienda condicional
+    // Vivienda
     if (data.extras?.includes("Vivienda")) {
       appendIf("environments", data.environments);
-      (data.environmentsList ?? []).forEach((v: string) =>
-        appendIf("environmentsList[]", v)
-      );
+      (data.environmentsList ?? []).forEach((v) => appendIf("environmentsList[]", v));
       appendIf("bedrooms", data.bedrooms);
       appendIf("bathrooms", data.bathrooms);
       appendIf("condition", data.condition);
@@ -258,17 +302,15 @@ export default function PropertyFormRH() {
     existingImages.forEach((url) => fd.append("keepImages", url));
     imageFiles.forEach((file) => fd.append("images", file));
 
-    // Videos (URLs)
+    // Videos
     (data.videoUrls ?? [])
-      .map((u: string) => (u ?? "").trim())
+      .map((u) => (u ?? "").trim())
       .filter(Boolean)
-      .forEach((u: string) => fd.append("videoUrls[]", u));
+      .forEach((u) => fd.append("videoUrls[]", u));
 
-    const isEdit = Boolean(id);
     const path = isEdit ? `/properties/${id}` : "/properties";
     const method = isEdit ? "PUT" : "POST";
 
-    // Idempotencia para evitar duplicados si el usuario clickea o recarga
     const headers: Record<string, string> = { "X-Idempotency-Key": nanoid(24) };
 
     try {
@@ -276,13 +318,11 @@ export default function PropertyFormRH() {
       navigate("/admin/dashboard");
     } catch (err: any) {
       alert("Error al guardar la propiedad: " + (err?.message || err));
-      throw err; // deja que RHF cierre el ciclo de submit con error
+      throw err;
     }
   };
 
-  const onError = () => {
-    setTriedSubmit(true);
-  };
+  const onError = () => setTriedSubmit(true);
 
   return (
     <div className="min-h-screen flex items-center justify-center py-10 bg-transparent">
@@ -291,33 +331,21 @@ export default function PropertyFormRH() {
           {isEdit ? "Editar Propiedad" : "Nueva Propiedad"}
         </h1>
 
-        <form
-          onSubmit={handleSubmit(onSubmit, onError)}
-          className="space-y-6"
-          autoComplete="off"
-        >
+        <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-6" autoComplete="off">
           {/* Título */}
           <div>
-            <label htmlFor="title" className="block font-semibold mb-1">
-              Título
-            </label>
+            <label className="block font-semibold mb-1">Título</label>
             <input
               {...register("title")}
               placeholder="Título"
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
-            {errors.title && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.title.message as string}
-              </p>
-            )}
+            {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title.message as string}</p>}
           </div>
 
           {/* Descripción */}
           <div>
-            <label htmlFor="description" className="block font-semibold mb-1">
-              Descripción
-            </label>
+            <label className="block font-semibold mb-1">Descripción</label>
             <textarea
               {...register("description")}
               rows={3}
@@ -325,276 +353,72 @@ export default function PropertyFormRH() {
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] resize-none focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.description && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.description.message as string}
-              </p>
+              <p className="text-red-500 text-sm mt-1">{errors.description.message as string}</p>
             )}
           </div>
 
           {/* Tipo de operación */}
           <div>
-            <label className="block font-semibold mb-1">
-              Tipo de operación
-            </label>
+            <label className="block font-semibold mb-1">Tipo de operación</label>
             <select
               {...register("operationType")}
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 focus:outline-primary focus:border-[#ffe8ad] transition"
               defaultValue=""
             >
               <option value="">Tipo de operación</option>
-              {OPERATION_TYPES.map((t) => (
+              {OPERATION_TYPES.slice(0, 2).map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
             </select>
             {errors.operationType && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.operationType.message as string}
-              </p>
+              <p className="text-red-500 text-sm mt-1">{errors.operationType.message as string}</p>
             )}
           </div>
 
           {/* Precio (solo venta) */}
-          {operationType !== "Arrendamiento" && (
+          {watch("operationType") !== "Arrendamiento" && (
             <div>
-              <label htmlFor="price" className="block font-semibold mb-1">
-                Precio
-              </label>
+              <label className="block font-semibold mb-1">Precio</label>
               <input
                 {...register("price", { valueAsNumber: true })}
                 type="number"
                 placeholder="Precio"
                 className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
               />
-              {errors.price && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.price.message as string}
-                </p>
-              )}
+              {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message as string}</p>}
             </div>
           )}
 
           {/* Hectáreas */}
           <div>
-            <label htmlFor="measure" className="block font-semibold mb-1">
-              Hectáreas
-            </label>
+            <label className="block font-semibold mb-1">Hectáreas</label>
             <input
               {...register("measure", { valueAsNumber: true })}
               type="number"
               placeholder="Ej: 150 (en ha)"
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
-            {errors.measure && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.measure.message as string}
-              </p>
-            )}
+            {errors.measure && <p className="text-red-500 text-sm mt-1">{errors.measure.message as string}</p>}
           </div>
 
           {/* Ubicación */}
           <div>
-            <label htmlFor="location" className="block font-semibold mb-1">
-              Ubicación
-            </label>
+            <label className="block font-semibold mb-1">Ubicación</label>
             <input
               {...register("location")}
               placeholder="Ubicación"
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             />
             {errors.location && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.location.message as string}
-              </p>
+              <p className="text-red-500 text-sm mt-1">{errors.location.message as string}</p>
             )}
           </div>
 
-          {/* ⬇️ Campos adicionales SOLO si se marcó "Vivienda" */}
-          {hasVivienda && (
-            <div className="rounded-xl border border-[#ebdbb9] bg-[#f9f1da]/60 p-4 space-y-4">
-              <h3 className="font-semibold text-base">Datos de la vivienda</h3>
-
-              {/* Números rápidos */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Ambientes (número)
-                  </label>
-                  <input
-                    {...register("environments", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="Ej: 5"
-                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                    aria-invalid={!!errors.environments}
-                  />
-                  {errors.environments?.message && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.environments.message as string}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Dormitorios
-                  </label>
-                  <input
-                    {...register("bedrooms", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="Ej: 3"
-                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                    aria-invalid={!!errors.bedrooms}
-                  />
-                  {errors.bedrooms?.message && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.bedrooms.message as string}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Baños
-                  </label>
-                  <input
-                    {...register("bathrooms", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="Ej: 2"
-                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                    aria-invalid={!!errors.bathrooms}
-                  />
-                  {errors.bathrooms?.message && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.bathrooms.message as string}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Estado / Antigüedad */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Estado
-                  </label>
-                  <select
-                    {...register("condition")}
-                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 focus:outline-primary focus:border-[#ffe8ad] transition"
-                    defaultValue=""
-                    aria-invalid={!!errors.condition}
-                  >
-                    <option value="">Seleccionar…</option>
-                    <option value="Excelente">Excelente</option>
-                    <option value="Muy bueno">Muy bueno</option>
-                    <option value="Bueno">Bueno</option>
-                    <option value="Regular">Regular</option>
-                    <option value="A refaccionar">A refaccionar</option>
-                  </select>
-                  {errors.condition?.message && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.condition.message as string}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Antigüedad (años)
-                  </label>
-                  <input
-                    {...register("age", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="Ej: 10"
-                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                    aria-invalid={!!errors.age}
-                  />
-                  {errors.age?.message && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.age.message as string}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Listas dinámicas */}
-              <Controller
-                name="environmentsList"
-                control={control}
-                render={({ field }) => {
-                  const items = Array.isArray(field.value)
-                    ? field.value.map((v) => String(v ?? ""))
-                    : [""];
-                  return (
-                    <>
-                      <DynamicList
-                        label="Ambientes (lista)"
-                        items={items}
-                        placeholder="Ej: Living, Cocina, Comedor…"
-                        onChange={(i, v) =>
-                          field.onChange(
-                            items.map((x, ix) =>
-                              ix === i ? String(v ?? "") : x
-                            )
-                          )
-                        }
-                        onAdd={() => field.onChange([...items, ""])}
-                        onRemove={(i) =>
-                          field.onChange(items.filter((_, ix) => ix !== i))
-                        }
-                      />
-                      {/* error del array */}
-                      {(errors.environmentsList as any)?.message && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {(errors.environmentsList as any).message}
-                        </p>
-                      )}
-                      {/* errores por ítem (opcional) */}
-                      {Array.isArray(errors.environmentsList) &&
-                        (errors.environmentsList as any[]).map((e, idx) =>
-                          e?.message ? (
-                            <p key={idx} className="mt-1 text-sm text-red-500">
-                              {e.message}
-                            </p>
-                          ) : null
-                        )}
-                    </>
-                  );
-                }}
-              />
-
-              {/* Superficie cubierta (m²) */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Superficie cubierta{" "}
-                  <span className="opacity-75">
-                    (en m<sup>2</sup>)
-                  </span>
-                </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="1"
-                  min={0}
-                  placeholder="Ej: 120"
-                  {...register("houseMeasures", { valueAsNumber: true })}
-                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                  aria-invalid={!!errors.houseMeasures}
-                />
-                {errors.houseMeasures?.message && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.houseMeasures.message as string}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Mapa / Lat Lng */}
           <div>
-            <label className="block font-semibold mb-1">
-              Ubicación en el mapa
-            </label>
+            <label className="block font-semibold mb-1">Ubicación en el mapa</label>
             <div className="h-64 w-full rounded-xl overflow-hidden mb-2 border border-[#ebdbb9] bg-crema-strong">
               <MapContainer
                 center={lat && lng ? [lat, lng] : [-36, -65]}
@@ -602,21 +426,12 @@ export default function PropertyFormRH() {
                 className="h-full w-full"
                 style={{ height: 256 }}
               >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution="&copy; OpenStreetMap contributors"
-                />
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
                 <LocationPicker
                   value={lat && lng ? { lat, lng } : null}
                   onChange={({ lat, lng }) => {
-                    setValue("lat", lat, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    });
-                    setValue("lng", lng, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    });
+                    setValue("lat", lat, { shouldValidate: true, shouldDirty: true });
+                    setValue("lng", lng, { shouldValidate: true, shouldDirty: true });
                   }}
                 />
               </MapContainer>
@@ -652,8 +467,9 @@ export default function PropertyFormRH() {
               onChange={handleImageChange}
               className="w-full p-2 border rounded bg-[#fcf7ea]/90"
             />
+            {/* registrar fields presentes en el schema */}
             <input type="hidden" {...register("imageFiles")} />
-            <input type="hidden" {...register("existingImagesCount")} />
+            <input type="hidden" {...register("existingImagesUrls")} />
 
             <div className="flex gap-2 mt-2 flex-wrap">
               {existingImages.map((url, i) => (
@@ -664,7 +480,6 @@ export default function PropertyFormRH() {
                     className="w-full h-full object-cover rounded border border-[#ebdbb9] loading-lazy"
                     loading="lazy"
                   />
-
                   <button
                     type="button"
                     onClick={() => handleRemoveExistingImage(i)}
@@ -702,16 +517,12 @@ export default function PropertyFormRH() {
               )}
           </div>
 
-          {/* 🎥 Videos por URL (DynamicList) */}
+          {/* 🎥 Videos por URL */}
           <Controller
             name="videoUrls"
             control={control}
             render={({ field }) => {
-              const toStrArr = (arr: unknown): string[] =>
-                Array.isArray(arr) ? arr.map((v) => (v ?? "") as string) : [""];
-
-              const items = toStrArr(field.value);
-
+              const items = Array.isArray(field.value) ? field.value.map((v) => (v ?? "") as string) : [""];
               return (
                 <div>
                   <DynamicList
@@ -719,14 +530,10 @@ export default function PropertyFormRH() {
                     items={items}
                     placeholder="https://www.youtube.com/watch?v=XXXXXXXX"
                     onChange={(i, v) =>
-                      field.onChange(
-                        items.map((x, ix) => (ix === i ? String(v ?? "") : x))
-                      )
+                      field.onChange(items.map((x, ix) => (ix === i ? String(v ?? "") : x)))
                     }
                     onAdd={() => field.onChange([...items, ""])}
-                    onRemove={(i) =>
-                      field.onChange(items.filter((_, ix) => ix !== i))
-                    }
+                    onRemove={(i) => field.onChange(items.filter((_, ix) => ix !== i))}
                   />
                   {(errors as any).videoUrls?.message && (
                     <p className="text-red-500 text-sm mt-1">
@@ -749,18 +556,14 @@ export default function PropertyFormRH() {
 
           {/* Servicios / Extras */}
           <div>
-            <label htmlFor="services" className="block font-semibold mb-1">
-              Servicios
-            </label>
+            <label className="block font-semibold mb-1">Servicios</label>
             <Controller
               name="services"
               control={control}
               render={({ field }) => (
                 <FeatureCheckboxGroup
                   options={SERVICES}
-                  selected={(field.value ?? []).filter(
-                    (x): x is string => typeof x === "string"
-                  )}
+                  selected={(field.value ?? []).filter((x): x is string => typeof x === "string")}
                   onChange={field.onChange}
                 />
               )}
@@ -768,23 +571,165 @@ export default function PropertyFormRH() {
           </div>
 
           <div>
-            <label htmlFor="extras" className="block font-semibold mb-1">
-              Extras
-            </label>
+            <label className="block font-semibold mb-1">Extras</label>
             <Controller
               name="extras"
               control={control}
               render={({ field }) => (
                 <FeatureCheckboxGroup
                   options={EXTRAS}
-                  selected={(field.value ?? []).filter(
-                    (x): x is string => typeof x === "string"
-                  )}
+                  selected={(field.value ?? []).filter((x): x is string => typeof x === "string")}
                   onChange={field.onChange}
                 />
               )}
             />
           </div>
+
+          {/* ⬇️ Campos adicionales SOLO si se marcó "Vivienda" */}
+          {hasVivienda && (
+            <div className="rounded-xl border border-[#ebdbb9] bg-[#f9f1da]/60 p-4 space-y-4">
+              <h3 className="font-semibold text-base">Datos de la vivienda</h3>
+
+              {/* Números rápidos */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ambientes (número)</label>
+                  <input
+                    {...register("environments", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 5"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.environments}
+                  />
+                  {errors.environments?.message && (
+                    <p className="mt-1 text-sm text-red-500">{errors.environments.message as string}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Dormitorios</label>
+                  <input
+                    {...register("bedrooms", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 3"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.bedrooms}
+                  />
+                  {errors.bedrooms?.message && (
+                    <p className="mt-1 text-sm text-red-500">{errors.bedrooms.message as string}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Baños</label>
+                  <input
+                    {...register("bathrooms", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 2"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.bathrooms}
+                  />
+                  {errors.bathrooms?.message && (
+                    <p className="mt-1 text-sm text-red-500">{errors.bathrooms.message as string}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Estado / Antigüedad */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Estado</label>
+                  <select
+                    {...register("condition")}
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 focus:outline-primary focus:border-[#ffe8ad] transition"
+                    defaultValue=""
+                    aria-invalid={!!errors.condition}
+                  >
+                    <option value="">Seleccionar…</option>
+                    <option value="Excelente">Excelente</option>
+                    <option value="Muy bueno">Muy bueno</option>
+                    <option value="Bueno">Bueno</option>
+                    <option value="Regular">Regular</option>
+                    <option value="A refaccionar">A refaccionar</option>
+                  </select>
+                  {errors.condition?.message && (
+                    <p className="mt-1 text-sm text-red-500">{errors.condition.message as string}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Antigüedad (años)</label>
+                  <input
+                    {...register("age", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 10"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.age}
+                  />
+                  {errors.age?.message && (
+                    <p className="mt-1 text-sm text-red-500">{errors.age.message as string}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Lista de ambientes */}
+              <Controller
+                name="environmentsList"
+                control={control}
+                render={({ field }) => {
+                  const items = Array.isArray(field.value)
+                    ? field.value.map((v) => String(v ?? ""))
+                    : [""];
+                  return (
+                    <>
+                      <DynamicList
+                        label="Ambientes (lista)"
+                        items={items}
+                        placeholder="Ej: Living, Cocina, Comedor…"
+                        onChange={(i, v) =>
+                          field.onChange(items.map((x, ix) => (ix === i ? String(v ?? "") : x)))
+                        }
+                        onAdd={() => field.onChange([...items, ""])}
+                        onRemove={(i) => field.onChange(items.filter((_, ix) => ix !== i))}
+                      />
+                      {(errors.environmentsList as any)?.message && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {(errors.environmentsList as any).message}
+                        </p>
+                      )}
+                      {Array.isArray(errors.environmentsList) &&
+                        (errors.environmentsList as any[]).map((e, idx) =>
+                          e?.message ? (
+                            <p key={idx} className="mt-1 text-sm text-red-500">
+                              {e.message}
+                            </p>
+                          ) : null
+                        )}
+                    </>
+                  );
+                }}
+              />
+
+              {/* Superficie cubierta (m²) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Superficie cubierta <span className="opacity-75">(en m<sup>2</sup>)</span>
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  min={0}
+                  placeholder="Ej: 120"
+                  {...register("houseMeasures", { valueAsNumber: true })}
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  aria-invalid={!!errors.houseMeasures}
+                />
+                {errors.houseMeasures?.message && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.houseMeasures.message as string}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Submit */}
           <button
