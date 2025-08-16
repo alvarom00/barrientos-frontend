@@ -96,17 +96,26 @@ export default function PropertyFormRH() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    setImageFiles((prev) => [...prev, ...files]);
-    setValue("imageFiles", [...imageFiles, ...files], { shouldValidate: true });
+
+    setImageFiles((prev) => {
+      const next = [...prev, ...files];
+      setValue("imageFiles", next, { shouldValidate: true, shouldDirty: true });
+      return next;
+    });
   };
 
   const handleRemoveImage = (index: number) => {
-    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImageFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      setValue("imageFiles", next, { shouldValidate: true, shouldDirty: true });
+      return next;
+    });
   };
 
   const handleRemoveExistingImage = (index: number) => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
-    clearErrors("imageFiles");
+    // revalida la regla de imágenes con el nuevo context
+    trigger("imageFiles");
   };
 
   // Validar imágenes cuando cambia la lista existente
@@ -125,57 +134,44 @@ export default function PropertyFormRH() {
         setExistingImages(data.imageUrls || []);
         reset({
           ...data,
-          price: data.price?.toString() ?? undefined,
-          measure: data.measure?.toString() ?? undefined,
-          environments:
-            data.extras?.includes("Vivienda") && data.environments != null
-              ? data.environments.toString()
-              : undefined,
-          bedrooms:
-            data.extras?.includes("Vivienda") && data.bedrooms != null
-              ? data.bedrooms.toString()
-              : undefined,
-          bathrooms:
-            data.extras?.includes("Vivienda") && data.bathrooms != null
-              ? data.bathrooms.toString()
-              : undefined,
-          lat: data.lat?.toString() ?? undefined,
-          lng: data.lng?.toString() ?? undefined,
-          imageUrls:
-            Array.isArray(data.imageUrls) && data.imageUrls.length
-              ? data.imageUrls
-              : [""],
-          // 👇 ahora `videoUrls` viene del backend y se edita como lista
+          // numéricos como números:
+          price: data.price ?? undefined,
+          measure: data.measure ?? undefined,
+          lat: data.lat ?? undefined,
+          lng: data.lng ?? undefined,
+
+          // “Vivienda” solo si corresponde
+          environments: data.extras?.includes("Vivienda")
+            ? data.environments ?? undefined
+            : undefined,
+          bedrooms: data.extras?.includes("Vivienda")
+            ? data.bedrooms ?? undefined
+            : undefined,
+          bathrooms: data.extras?.includes("Vivienda")
+            ? data.bathrooms ?? undefined
+            : undefined,
+          condition: data.extras?.includes("Vivienda")
+            ? data.condition ?? ""
+            : undefined,
+          age: data.extras?.includes("Vivienda")
+            ? data.age ?? undefined
+            : undefined,
+          houseMeasures: data.extras?.includes("Vivienda")
+            ? data.houseMeasures ?? undefined
+            : undefined,
+
+          // listas
           videoUrls:
             Array.isArray(data.videoUrls) && data.videoUrls.length
               ? data.videoUrls
               : [""],
-          houseMeasures:
-            data.extras?.includes("Vivienda") && data.houseMeasures != null
-              ? data.houseMeasures
-              : undefined,
-          environmentsList:
-            data.extras?.includes("Vivienda") &&
-            Array.isArray(data.environmentsList) &&
-            data.environmentsList.length
-              ? data.environmentsList
-              : undefined,
           services: Array.isArray(data.services) ? data.services : [],
           extras: Array.isArray(data.extras) ? data.extras : [],
-          condition:
-            data.extras?.includes("Vivienda") && data.condition
-              ? data.condition
-              : undefined,
-          age:
-            data.extras?.includes("Vivienda") && data.age
-              ? data.age
-              : undefined,
+
           operationType: data.operationType ?? "",
-          location: data.location ?? "",
-          title: data.title ?? "",
-          description: data.description ?? "",
-          imageFiles: [],
+          imageFiles: [], // siempre vacío al iniciar edición
         });
+
         setTimeout(() => trigger(["imageFiles"]), 0);
       })
       .catch((err) => {
@@ -360,7 +356,7 @@ export default function PropertyFormRH() {
                 Precio
               </label>
               <input
-                {...register("price")}
+                {...register("price", { valueAsNumber: true })}
                 type="number"
                 placeholder="Precio"
                 className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
@@ -607,23 +603,28 @@ export default function PropertyFormRH() {
                 <LocationPicker
                   value={lat && lng ? { lat, lng } : null}
                   onChange={({ lat, lng }) => {
-                    setValue("lat", lat);
-                    setValue("lng", lng);
-                    trigger(["lat", "lng"]);
+                    setValue("lat", lat, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    setValue("lng", lng, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
                   }}
                 />
               </MapContainer>
             </div>
             <div className="flex gap-2">
               <input
-                {...register("lat")}
+                {...register("lat", { valueAsNumber: true })}
                 type="number"
                 placeholder="Latitud"
                 className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468]"
                 readOnly
               />
               <input
-                {...register("lng")}
+                {...register("lng", { valueAsNumber: true })}
                 type="number"
                 placeholder="Longitud"
                 className="w-1/2 p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468]"
@@ -645,6 +646,7 @@ export default function PropertyFormRH() {
               onChange={handleImageChange}
               className="w-full p-2 border rounded bg-[#fcf7ea]/90"
             />
+            <input type="hidden" {...register("imageFiles")} />
 
             <div className="flex gap-2 mt-2 flex-wrap">
               {existingImages.map((url, i) => (
