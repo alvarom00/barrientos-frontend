@@ -11,7 +11,9 @@ import {
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
+import { nanoid } from "nanoid";
 import { api, abortable } from "../api";
+import clsx from "clsx";
 
 const OPERATION_TYPES = ["Venta", "Arrendamiento"];
 
@@ -29,7 +31,7 @@ export default function PropertyFormRH() {
     clearErrors,
     reset,
     trigger,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isSubmitting },
   } = useForm({
     resolver: yupResolver(propertySchema),
     context: {
@@ -77,6 +79,7 @@ export default function PropertyFormRH() {
   const extras = watch("extras") ?? [];
   const lat = watch("lat");
   const lng = watch("lng");
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const hasVivienda = extras.includes("Vivienda");
 
@@ -203,59 +206,65 @@ export default function PropertyFormRH() {
   }, [hasVivienda, setValue, clearErrors, getValues]);
 
   const onSubmit = async (data: any) => {
-    const formData = new FormData();
+    // RHF maneja isSubmitting, pero este guard evita carreras si alguien llama onSubmit directo
+    if (isSubmitting) return;
+
+    const fd = new FormData();
+    const appendIf = (k: string, v: any) => {
+      if (v !== undefined && v !== null && v !== "") fd.append(k, String(v));
+    };
 
     // Campos básicos
-    formData.append("title", data.title);
-    formData.append("description", data.description);
-    if (data.price) formData.append("price", data.price);
-    if (data.measure) formData.append("measure", data.measure);
-    formData.append("location", data.location);
-    if (data.lat) formData.append("lat", data.lat);
-    if (data.lng) formData.append("lng", data.lng);
-    formData.append("operationType", data.operationType);
+    fd.append("title", data.title);
+    fd.append("description", data.description);
+    appendIf("price", data.price);
+    appendIf("measure", data.measure);
+    fd.append("location", data.location);
+    appendIf("lat", data.lat);
+    appendIf("lng", data.lng);
+    fd.append("operationType", data.operationType);
+    if (data.propertyType) fd.append("propertyType", data.propertyType);
 
     // Arrays
-    (data.services || []).forEach((s: string) =>
-      formData.append("services[]", s)
-    );
-    (data.extras || []).forEach((e: string) => formData.append("extras[]", e));
+    (data.services ?? []).forEach((s: string) => appendIf("services[]", s));
+    (data.extras ?? []).forEach((e: string) => appendIf("extras[]", e));
 
     // Vivienda condicional
     if (data.extras?.includes("Vivienda")) {
-      if (data.environments) formData.append("environments", data.environments);
-      (data.environmentsList || []).forEach((v: string) =>
-        formData.append("environmentsList[]", v)
+      appendIf("environments", data.environments);
+      (data.environmentsList ?? []).forEach((v: string) =>
+        appendIf("environmentsList[]", v)
       );
-      if (data.bedrooms) formData.append("bedrooms", data.bedrooms);
-      if (data.bathrooms) formData.append("bathrooms", data.bathrooms);
-      if (data.condition) formData.append("condition", data.condition);
-      if (data.age) formData.append("age", data.age);
-      if (data.houseMeasures)
-        formData.append("houseMeasures", data.houseMeasures);
+      appendIf("bedrooms", data.bedrooms);
+      appendIf("bathrooms", data.bathrooms);
+      appendIf("condition", data.condition);
+      appendIf("age", data.age);
+      appendIf("houseMeasures", data.houseMeasures);
     }
 
-    // 🖼️ Imágenes (igual que antes)
-    existingImages.forEach((url) => formData.append("keepImages", url));
-    imageFiles.forEach((file) => formData.append("images", file));
+    // Imágenes
+    existingImages.forEach((url) => fd.append("keepImages", url));
+    imageFiles.forEach((file) => fd.append("images", file));
 
-    // 🎥 Videos por URL (NUEVO)
-    (data.videoUrls || [])
+    // Videos (URLs)
+    (data.videoUrls ?? [])
       .map((u: string) => (u ?? "").trim())
       .filter(Boolean)
-      .forEach((u: string) => formData.append("videoUrls[]", u));
-
-    setTriedSubmit(false);
+      .forEach((u: string) => fd.append("videoUrls[]", u));
 
     const isEdit = Boolean(id);
     const path = isEdit ? `/properties/${id}` : "/properties";
     const method = isEdit ? "PUT" : "POST";
 
+    // Idempotencia para evitar duplicados si el usuario clickea o recarga
+    const headers: Record<string, string> = { "X-Idempotency-Key": nanoid(24) };
+
     try {
-      await api(path, method, { body: formData });
+      await api(path, method, { body: fd, headers });
       navigate("/admin/dashboard");
     } catch (err: any) {
-      alert("Error al guardar la propiedad: " + (err.message || err));
+      alert("Error al guardar la propiedad: " + (err?.message || err));
+      throw err; // deja que RHF cierre el ciclo de submit con error
     }
   };
 
@@ -389,6 +398,186 @@ export default function PropertyFormRH() {
             )}
           </div>
 
+          {/* ⬇️ Campos adicionales SOLO si se marcó "Vivienda" */}
+          {hasVivienda && (
+            <div className="rounded-xl border border-[#ebdbb9] bg-[#f9f1da]/60 p-4 space-y-4">
+              <h3 className="font-semibold text-base">Datos de la vivienda</h3>
+
+              {/* Números rápidos */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Ambientes (número)
+                  </label>
+                  <input
+                    {...register("environments", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 5"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.environments}
+                  />
+                  {errors.environments?.message && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.environments.message as string}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Dormitorios
+                  </label>
+                  <input
+                    {...register("bedrooms", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 3"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.bedrooms}
+                  />
+                  {errors.bedrooms?.message && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.bedrooms.message as string}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Baños
+                  </label>
+                  <input
+                    {...register("bathrooms", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 2"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.bathrooms}
+                  />
+                  {errors.bathrooms?.message && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.bathrooms.message as string}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Estado / Antigüedad */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Estado
+                  </label>
+                  <select
+                    {...register("condition")}
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 focus:outline-primary focus:border-[#ffe8ad] transition"
+                    defaultValue=""
+                    aria-invalid={!!errors.condition}
+                  >
+                    <option value="">Seleccionar…</option>
+                    <option value="Excelente">Excelente</option>
+                    <option value="Muy bueno">Muy bueno</option>
+                    <option value="Bueno">Bueno</option>
+                    <option value="Regular">Regular</option>
+                    <option value="A refaccionar">A refaccionar</option>
+                  </select>
+                  {errors.condition?.message && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.condition.message as string}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Antigüedad (años)
+                  </label>
+                  <input
+                    {...register("age", { valueAsNumber: true })}
+                    type="number"
+                    placeholder="Ej: 10"
+                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                    aria-invalid={!!errors.age}
+                  />
+                  {errors.age?.message && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.age.message as string}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Listas dinámicas */}
+              <Controller
+                name="environmentsList"
+                control={control}
+                render={({ field }) => {
+                  const items = Array.isArray(field.value)
+                    ? field.value.map((v) => String(v ?? ""))
+                    : [""];
+                  return (
+                    <>
+                      <DynamicList
+                        label="Ambientes (lista)"
+                        items={items}
+                        placeholder="Ej: Living, Cocina, Comedor…"
+                        onChange={(i, v) =>
+                          field.onChange(
+                            items.map((x, ix) =>
+                              ix === i ? String(v ?? "") : x
+                            )
+                          )
+                        }
+                        onAdd={() => field.onChange([...items, ""])}
+                        onRemove={(i) =>
+                          field.onChange(items.filter((_, ix) => ix !== i))
+                        }
+                      />
+                      {/* error del array */}
+                      {(errors.environmentsList as any)?.message && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {(errors.environmentsList as any).message}
+                        </p>
+                      )}
+                      {/* errores por ítem (opcional) */}
+                      {Array.isArray(errors.environmentsList) &&
+                        (errors.environmentsList as any[]).map((e, idx) =>
+                          e?.message ? (
+                            <p key={idx} className="mt-1 text-sm text-red-500">
+                              {e.message}
+                            </p>
+                          ) : null
+                        )}
+                    </>
+                  );
+                }}
+              />
+
+              {/* Superficie cubierta (m²) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Superficie cubierta{" "}
+                  <span className="opacity-75">
+                    (en m<sup>2</sup>)
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="1"
+                  min={0}
+                  placeholder="Ej: 120"
+                  {...register("houseMeasures", { valueAsNumber: true })}
+                  className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
+                  aria-invalid={!!errors.houseMeasures}
+                />
+                {errors.houseMeasures?.message && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.houseMeasures.message as string}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Mapa / Lat Lng */}
           <div>
             <label className="block font-semibold mb-1">
@@ -451,11 +640,12 @@ export default function PropertyFormRH() {
               {existingImages.map((url, i) => (
                 <div key={`exist-${i}`} className="relative w-24 h-16">
                   <img
-                    src={url}
+                    src={/^https?:\/\//i.test(url) ? url : `${API_URL}${url}`}
                     alt={`img-${i}`}
                     className="w-full h-full object-cover rounded border border-[#ebdbb9] loading-lazy"
                     loading="lazy"
                   />
+
                   <button
                     type="button"
                     onClick={() => handleRemoveExistingImage(i)}
@@ -580,9 +770,15 @@ export default function PropertyFormRH() {
           {/* Submit */}
           <button
             type="submit"
-            className="w-full py-2 rounded-lg font-semibold shadow bg-[#ffe8ad] hover:bg-[#f5e3b8] hover:text-[#ad924a] transition-all duration-200 active:scale-95 border border-[#ebdbb9] cursor-pointer"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className={clsx(
+              "inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition",
+              "bg-[#c7ae79] text-[#1b2328] hover:opacity-90 shadow",
+              isSubmitting && "opacity-60 cursor-not-allowed"
+            )}
           >
-            Guardar propiedad
+            {isSubmitting ? "Guardando..." : "Guardar propiedad"}
           </button>
 
           {triedSubmit && !isValid && (
