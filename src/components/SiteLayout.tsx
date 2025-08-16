@@ -22,43 +22,36 @@ export default function SiteLayout() {
             </p>
           </div>
 
-          {/* Columna centro: contacto */}
-          <div className="text-center">
-            <p className="uppercase text-xs font-semibold tracking-wider text-white/70">
-              Encontranos en
-            </p>
-            <div className="mt-2 flex items-start justify-center gap-2">
-              {/* Icono ubicación */}
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="mt-0.5"
-              >
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
-              </svg>
-              <address className="not-italic text-sm text-white/80 max-w-[220px]">
-                Las Heras 2849, Bahía Blanca, Provincia de Buenos Aires
-              </address>
-            </div>
-            <a
-              href="tel:+5492914421242"
-              className="mt-2 inline-flex items-center gap-2 text-base font-semibold hover:opacity-90 transition"
-              aria-label="Llamar al 2914421242"
-            >
-              {/* Icono teléfono */}
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M6.62 10.79a15.478 15.478 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.21 2.2z" />
-              </svg>
-              2914421242
-            </a>
-          </div>
+          {/* Columna centro: contacto (grid 2 columnas, íconos a la izquierda) */}
+<div className="text-center">
+  <p className="uppercase text-xs font-semibold tracking-wider text-white/70">
+    Encontranos en
+  </p>
+
+  {/* 🔧 2 columnas: [icono][texto], 2 filas: [dirección][teléfono] */}
+  <div className="mt-3 mx-auto inline-grid grid-cols-[1.25rem_auto] items-center gap-x-2 gap-y-2">
+    {/* Fila 1: Pin + Dirección */}
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current text-white/80 justify-self-center">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+    </svg>
+    <address className="not-italic text-sm text-white/80 text-left max-w-[320px] justify-self-start">
+      Las Heras 2849, Bahía Blanca, Provincia de Buenos Aires
+    </address>
+
+    {/* Fila 2: Teléfono (icono + número alineados) */}
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current text-white/80 justify-self-center">
+      <path d="M6.62 10.79a15.478 15.478 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.21 2.2z" />
+    </svg>
+    <a
+      href="tel:+5492914421242"
+      className="text-base font-semibold leading-none text-left justify-self-start hover:opacity-90 transition"
+      aria-label="Llamar al 2914421242"
+    >
+      2914421242
+    </a>
+  </div>
+</div>
+
 
           {/* Columna derecha: redes */}
           <div className="text-center md:text-right">
