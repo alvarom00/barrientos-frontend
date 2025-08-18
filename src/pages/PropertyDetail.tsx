@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { Check } from "lucide-react";
 import "leaflet/dist/leaflet.css";
-import PropertyGallery from "../components/PropertyGallery";
+import { PropertyGallery } from "../components/PropertyGallery";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";

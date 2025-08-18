@@ -14,10 +14,6 @@
   --color-crema-strong: rgba(255, 244, 214, 0.94);
 }
 
-html, body {
-  overscroll-behavior-y: none;
-}
-
 /* Utilidades personalizadas */
 @layer utilities {
   .animate-bounce-x {

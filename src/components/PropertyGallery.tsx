@@ -1,263 +1,168 @@
-import { useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
-import clsx from "clsx";
-import LightboxModal from "./LightboxModal";
+// PropertyGallery.tsx
+import { useState, useRef, useEffect } from "react";
+import { LightboxModal } from "./LightboxModal";
 import { getAssetUrl } from "../utils/getAssetUrl";
 
-/** ===== Tipos ===== */
 export type MediaItem =
-  | { type: "image"; src: string; thumb?: string }
-  | { type: "video"; src: string; embedSrc?: string; thumb?: string };
+  | { type: "image"; url: string }
+  | { type: "video-file"; url: string }
+  | { type: "video-embed"; embedSrc: string };
 
-export type PropertyGalleryProps = {
-  images: string[];         // URLs absolutas de Cloudinary o relativas (getAssetUrl las resuelve)
-  videos?: string[];        // URLs (YouTube/Vimeo/MP4); opcional
-  className?: string;
-};
-
-/** Convierte URL de YouTube/Vimeo a embed; si no matchea, queda undefined (usaremos <video>) */
-function toEmbed(url: string): string | undefined {
-  try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, "");
-    // YouTube
-    if (host.includes("youtube.com")) {
-      const v = u.searchParams.get("v");
-      if (v) return `https://www.youtube.com/embed/${v}`;
-    }
-    if (host === "youtu.be") {
-      const id = u.pathname.replace("/", "");
-      if (id) return `https://www.youtube.com/embed/${id}`;
-    }
-    // Vimeo
-    if (host.includes("vimeo.com")) {
-      const id = u.pathname.split("/").filter(Boolean)[0];
-      if (id) return `https://player.vimeo.com/video/${id}`;
-    }
-  } catch {}
-  return undefined;
+interface Props {
+  images: string[];
+  videos: string[]; // URLs (YouTube/Vimeo/MP4)
 }
 
-export default function PropertyGallery({
-  images,
-  videos = [],
-  className,
-}: PropertyGalleryProps) {
-  // Normalizamos el arreglo de media conservando TU UI
-  const media: MediaItem[] = useMemo(() => {
-    const imgs: MediaItem[] = (images || []).map((u) => ({
-      type: "image",
-      src: getAssetUrl(u),
-      thumb: getAssetUrl(u),
-    }));
-    const vids: MediaItem[] = (videos || []).map((u) => {
-      const embed = toEmbed(u);
-      return embed
-        ? { type: "video", src: u, embedSrc: embed }
-        : { type: "video", src: u };
-    });
-    return [...imgs, ...vids];
-  }, [images, videos]);
-
-  const [index, setIndex] = useState(0);
-  const [dir, setDir] = useState<1 | -1>(1); // para animación izquierda/derecha
-  const [open, setOpen] = useState(false);
-
-  // Swipe en mobile sin romper layout
-  const touch = useRef<{ x: number; y: number; lock?: "h" | "v" } | null>(null);
-
-  const go = (delta: number) => {
-    if (!media.length) return;
-    setDir(delta > 0 ? 1 : -1);
-    setIndex((i) => (i + delta + media.length) % media.length);
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    touch.current = { x: t.clientX, y: t.clientY };
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    if (!touch.current) return;
-    const dx = t.clientX - touch.current.x;
-    const dy = t.clientY - touch.current.y;
-
-    // bloqueamos el scroll vertical SOLO cuando detectamos gesto horizontal claro
-    if (!touch.current.lock) {
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) + 6) {
-        touch.current.lock = "h";
-      } else if (Math.abs(dy) > 10) {
-        touch.current.lock = "v";
-      }
+// Helpers — YouTube/Vimeo
+function parseYouTube(url: string) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) {
+      let id = "";
+      if (u.hostname.includes("youtu.be")) id = u.pathname.slice(1);
+      else id = u.searchParams.get("v") || (u.pathname.startsWith("/embed/") ? u.pathname.split("/embed/")[1] : "");
+      if (id) return { embedSrc: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1` };
     }
-    if (touch.current.lock === "h") {
-      // evita que el navegador “arrastre” el viewport o dispare back-swipe
-      e.preventDefault();
+  } catch {}
+  return null;
+}
+function parseVimeo(url: string) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean).pop();
+      if (id) return { embedSrc: `https://player.vimeo.com/video/${id}` };
     }
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touch.current) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touch.current.x;
-    const dy = t.clientY - touch.current.y;
-    const wasHorizontal = Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy);
+  } catch {}
+  return null;
+}
 
-    if (wasHorizontal) {
-      if (dx < 0) go(+1); // swipe left → siguiente
-      else go(-1);        // swipe right → anterior
-    }
-    touch.current = null;
-  };
+export function PropertyGallery({ images, videos }: Props) {
+  const imageItems: MediaItem[] = (images || []).map((url) => ({ type: "image", url }));
+  const videoItems: MediaItem[] = (videos || []).map((url) => {
+    const yt = parseYouTube(url);
+    if (yt) return { type: "video-embed", embedSrc: yt.embedSrc };
+    const vi = parseVimeo(url);
+    if (vi) return { type: "video-embed", embedSrc: vi.embedSrc };
+    return { type: "video-file", url };
+  });
 
-  // Previene que el reproductor “tape” las flechas: las flechas van arriba (z) y el contenedor del media no captura
-  // eventos fuera de sus controles.
-  const arrows =
-    media.length > 1 ? (
-      <>
-        {/* Flechas SOLO desktop */}
-        <button
-          onClick={() => go(-1)}
-          className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 items-center justify-center w-9 h-9 rounded-full bg-black/50 hover:bg-black/60 transition z-20"
-          aria-label="Anterior"
-        >
-          <ChevronLeft className="text-white" />
-        </button>
-        <button
-          onClick={() => go(+1)}
-          className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 items-center justify-center w-9 h-9 rounded-full bg-black/50 hover:bg-black/60 transition z-20"
-          aria-label="Siguiente"
-        >
-          <ChevronRight className="text-white" />
-        </button>
-      </>
-    ) : null;
+  const media: MediaItem[] = [...imageItems, ...videoItems];
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  // para que el swipe no “mueva” el fondo ni afecte navbar/whatsapp:
-  // - overscroll contain corta el efecto rebote
-  // - touch-action pan-y deja el scroll vertical natural
-  const swipeProps = {
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd,
-  };
+  // ----- FIX carrusel de miniaturas -----
+  const thumbsRef = useRef<HTMLDivElement>(null);
+
+  // al montar: empezar totalmente a la izquierda
+  useEffect(() => {
+    if (thumbsRef.current) thumbsRef.current.scrollLeft = 0;
+  }, []);
+
+  // cuando cambia la activa: asegurar visibilidad
+  useEffect(() => {
+    const container = thumbsRef.current;
+    if (!container) return;
+    const el = container.children[lightboxIndex] as HTMLElement | undefined;
+    el?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+  }, [lightboxIndex]);
+
+  if (media.length === 0) return null;
+  const current = media[lightboxIndex];
 
   return (
-    <div className={clsx("w-full", className)}>
-      {/* Preview principal */}
+    <div className="w-full flex flex-col items-center space-y-4">
+      {/* Vista principal */}
       <div
-        className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/40 border border-[#ebdbb9] select-none"
-        style={{
-          overscrollBehavior: "contain",
-          touchAction: "pan-y",
-        }}
+        className="w-full flex justify-center items-center cursor-zoom-in group"
+        onClick={() => setLightboxOpen(true)}
+        tabIndex={0}
+        aria-label="Abrir galería"
       >
-        {/* capa de interacción (z-index) */}
-        {arrows}
-
-        {/* Slide con animación, mismo look */}
-        <AnimatePresence initial={false} custom={dir} mode="wait">
-          <motion.div
-            key={index}
-            custom={dir}
-            initial={{ x: dir * 60, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -dir * 60, opacity: 0 }}
-            transition={{ type: "tween", duration: 0.25 }}
-            className="absolute inset-0"
+        {current.type === "image" && (
+          <img
+            src={getAssetUrl((current as any).url)}
+            alt={`Vista ${lightboxIndex + 1}`}
+            className="rounded-lg shadow-lg max-w-full max-h-[420px] object-contain group-hover:opacity-90 transition bg-black"
+          />
+        )}
+        {current.type === "video-file" && (
+          <video
+            src={getAssetUrl((current as any).url)}
+            controls
+            preload="metadata"
+            className="rounded-lg shadow-lg max-w-full max-h-[420px] object-contain group-hover:opacity-90 transition bg-black"
+          />
+        )}
+        {current.type === "video-embed" && (
+          <div
+            className="rounded-lg shadow-lg bg-black group-hover:opacity-90 transition w-full"
+            style={{ aspectRatio: "16 / 9", maxHeight: 420 }}
           >
-            {/* Contenido clickeable → abre Lightbox */}
-            <button
-              className="absolute inset-0"
-              onClick={() => setOpen(true)}
-              aria-label="Abrir galería"
-              // NO bloquea los controles del video (los ponemos por encima)
-              style={{ pointerEvents: "auto" }}
-              {...swipeProps}
+            <iframe
+              className="w-full h-full rounded-lg"
+              src={(current as any).embedSrc}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title="Video"
             />
-
-            {media[index].type === "image" ? (
-              <img
-                src={media[index].src}
-                alt={`Imagen ${index + 1}`}
-                className="absolute inset-0 w-full h-full object-contain"
-                draggable={false}
-              />
-            ) : media[index].embedSrc ? (
-              <div className="absolute inset-0 flex">
-                {/* El iframe maneja sus propios eventos; las flechas están por encima (z-20) */}
-                <iframe
-                  className="w-full h-full"
-                  src={media[index].embedSrc}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={`Video ${index + 1}`}
-                />
-              </div>
-            ) : (
-              <video
-                className="absolute inset-0 w-full h-full object-contain bg-black"
-                src={media[index].src}
-                controls
-                playsInline
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        )}
       </div>
 
-      {/* Tiras de miniaturas (exactamente como antes) */}
-      {!!media.length && (
-        <div className="mt-3 grid grid-cols-5 sm:grid-cols-8 gap-2">
-          {media.map((m, i) => (
+      {/* Miniaturas — carrusel arreglado */}
+      <div
+        ref={thumbsRef}
+        className="flex gap-2 overflow-x-auto w-full justify-start px-3 py-1 snap-x snap-mandatory scroll-smooth"
+        style={{ scrollbarGutter: "stable" }}
+      >
+        {media.map((m, i) => {
+          const isActive = i === lightboxIndex;
+          return (
             <button
               key={i}
-              onClick={() => {
-                setDir(i > index ? 1 : -1);
-                setIndex(i);
-              }}
-              className={clsx(
-                "relative aspect-video rounded overflow-hidden border",
-                i === index ? "border-[#c7ae79]" : "border-[#ebdbb9]"
-              )}
-              aria-label={`Miniatura ${i + 1}`}
+              onClick={() => setLightboxIndex(i)}
+              aria-label={`Seleccionar vista ${i + 1}`}
+              tabIndex={0}
+              className={`shrink-0 snap-start border-2 rounded-lg p-1 ${
+                isActive ? "border-primary" : "border-transparent"
+              } bg-white/80 dark:bg-black/60`}
             >
-              {m.type === "image" ? (
+              {m.type === "image" && (
                 <img
-                  src={m.thumb || m.src}
-                  className="w-full h-full object-cover"
+                  src={getAssetUrl((m as any).url)}
                   alt={`Miniatura ${i + 1}`}
-                  loading="lazy"
+                  className="w-16 h-16 object-cover rounded-md"
                 />
-              ) : m.embedSrc ? (
-                <div className="w-full h-full bg-black/70 grid place-items-center">
-                  <Play className="text-white" />
-                </div>
-              ) : (
-                <div className="w-full h-full bg-black/70 grid place-items-center">
-                  <Play className="text-white" />
+              )}
+              {m.type === "video-file" && (
+                <video
+                  src={getAssetUrl((m as any).url)}
+                  className="w-16 h-16 object-cover rounded-md bg-black"
+                  preload="metadata"
+                />
+              )}
+              {m.type === "video-embed" && (
+                <div className="relative w-16 h-16 bg-black rounded-md overflow-hidden flex items-center justify-center">
+                  <div className="absolute inset-0 opacity-30 bg-gradient-to-br from-neutral-700 to-neutral-900" />
+                  <span className="relative text-white text-sm">▶</span>
                 </div>
               )}
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
-      {/* Lightbox (misma estética que tenías) */}
-      <AnimatePresence>
-        {open && (
-          <LightboxModal
-            media={media}
-            initialIndex={index}
-            onClose={() => setOpen(false)}
-            currentIndex={index}
-            setCurrentIndex={(i) => {
-              setDir(i > index ? 1 : -1);
-              setIndex(i);
-            }}
-          />
-        )}
-      </AnimatePresence>
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <LightboxModal
+          media={media}
+          initialIndex={lightboxIndex}
+          currentIndex={lightboxIndex}
+          setCurrentIndex={setLightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </div>
   );
 }

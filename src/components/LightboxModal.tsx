@@ -1,6 +1,8 @@
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
+import { getAssetUrl } from "../utils/getAssetUrl";
 import { motion, AnimatePresence } from "framer-motion";
 import type { MediaItem } from "./PropertyGallery";
 
@@ -12,167 +14,190 @@ interface LightboxModalProps {
   setCurrentIndex: (idx: number) => void;
 }
 
-export default function LightboxModal({
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 300 : -300,
+    opacity: 0,
+    scale: 0.95,
+  }),
+  center: { x: 0, opacity: 1, scale: 1, zIndex: 1 },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 300 : -300,
+    opacity: 0,
+    scale: 0.95,
+    zIndex: 0,
+  }),
+};
+
+const swipeConfidenceThreshold = 60;
+
+export function LightboxModal({
   media,
-  initialIndex,
-  onClose,
+  currentIndex,
   setCurrentIndex,
+  onClose,
 }: LightboxModalProps) {
-  const [index, setIndex] = useState(initialIndex);
-  const [dir, setDir] = useState<1 | -1>(1);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [[index, direction], setIndex] = useState<[number, number]>([
+    currentIndex,
+    0,
+  ]);
+  const xRef = useRef(0);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    xRef.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - xRef.current;
+    if (Math.abs(dx) > swipeConfidenceThreshold) {
+      if (dx < 0) paginate(1);
+      else paginate(-1);
+    }
+  }
 
   useEffect(() => {
-    setIndex(initialIndex);
-  }, [initialIndex]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const prev = () => {
-    setDir(-1);
-    setIndex((i) => {
-      const ni = (i - 1 + media.length) % media.length;
-      setCurrentIndex(ni);
-      return ni;
-    });
-  };
-  const next = () => {
-    setDir(+1);
-    setIndex((i) => {
-      const ni = (i + 1) % media.length;
-      setCurrentIndex(ni);
-      return ni;
-    });
+  const paginate = (newDirection: number) => {
+    const next = (index + newDirection + media.length) % media.length;
+    setIndex([next, newDirection]);
+    setCurrentIndex(next);
   };
 
-  // swipe horizontal en modal
-  const touch = useRef<{ x: number; y: number; lock?: "h" | "v" } | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    touch.current = { x: t.clientX, y: t.clientY };
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    if (!touch.current) return;
-    const dx = t.clientX - touch.current.x;
-    const dy = t.clientY - touch.current.y;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") paginate(-1);
+      if (e.key === "ArrowRight") paginate(1);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line
+  }, [index, media.length]);
 
-    if (!touch.current.lock) {
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) + 6) {
-        touch.current.lock = "h";
-      } else if (Math.abs(dy) > 10) {
-        touch.current.lock = "v";
-      }
-    }
-    if (touch.current.lock === "h") e.preventDefault();
+  // Medidas del área visible del contenido (para mantener tamaño consistente)
+  //  - 92vw (tope 1100px) y 80vh
+  const containerStyle: React.CSSProperties = {
+    width: "min(92vw, 1100px)",
+    maxWidth: "1100px",
+    maxHeight: "80vh",
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touch.current) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touch.current.x;
-    const dy = t.clientY - touch.current.y;
-    const wasHorizontal = Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy);
-    if (wasHorizontal) {
-      if (dx < 0) next();
-      else prev();
-    }
-    touch.current = null;
-  };
-
-  if (typeof document === "undefined") return null;
 
   return createPortal(
     <div
-      ref={containerRef}
-      className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm"
-      onClick={(e) => {
-        // cerrar sólo si clic fuera del media
-        if (e.target === containerRef.current) onClose();
-      }}
+      className="fixed inset-0 z-1500 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onClick={onClose}
     >
-      {/* cerrar */}
+      {/* Close */}
       <button
-        onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white grid place-items-center z-20"
+        className="absolute top-6 right-6 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition z-2000"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         aria-label="Cerrar"
       >
-        <X />
+        <X size={32} />
       </button>
 
-      {/* flechas SOLO desktop */}
-      {media.length > 1 && (
-        <>
-          <button
-            onClick={prev}
-            className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white grid place-items-center z-20"
-            aria-label="Anterior"
-          >
-            <ChevronLeft />
-          </button>
-          <button
-            onClick={next}
-            className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white grid place-items-center z-20"
-            aria-label="Siguiente"
-          >
-            <ChevronRight />
-          </button>
-        </>
-      )}
-
-      {/* área del media */}
-      <div
-        className="absolute inset-0 flex items-center justify-center p-4 select-none"
-        style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+      {/* Prev */}
+      <button
+        className={clsx(
+          "absolute left-4 md:left-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
+          media.length < 2 && "opacity-0 pointer-events-none"
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          paginate(-1);
+        }}
+        tabIndex={0}
+        aria-label="Anterior"
       >
-        <div className="relative w-full max-w-5xl aspect-video">
-          <AnimatePresence initial={false} custom={dir} mode="wait">
-            <motion.div
-              key={index}
-              custom={dir}
-              initial={{ x: dir * 60, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -dir * 60, opacity: 0 }}
-              transition={{ type: "tween", duration: 0.25 }}
-              className="absolute inset-0"
-            >
-              {media[index].type === "image" ? (
-                <img
-                  src={media[index].src}
-                  className="absolute inset-0 w-full h-full object-contain"
-                  alt={`Imagen ${index + 1}`}
-                  draggable={false}
-                />
-              ) : media[index].embedSrc ? (
+        <ChevronLeft size={32} />
+      </button>
+
+      {/* Next */}
+      <button
+        className={clsx(
+          "absolute right-4 md:right-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
+          media.length < 2 && "opacity-0 pointer-events-none"
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          paginate(1);
+        }}
+        tabIndex={0}
+        aria-label="Siguiente"
+      >
+        <ChevronRight size={32} />
+      </button>
+
+      {/* Contenido animado */}
+      <div
+        className="flex items-center justify-center relative select-none"
+        style={containerStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <AnimatePresence custom={direction} initial={false}>
+          <motion.div
+            key={index}
+            className="w-full h-full flex items-center justify-center"
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3, type: "tween", ease: "easeInOut" }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.9}
+            onDragEnd={(_, { offset }) => {
+              const swipe = Math.abs(offset.x) > swipeConfidenceThreshold;
+              if (swipe) {
+                if (offset.x < 0) paginate(1);
+                else paginate(-1);
+              }
+            }}
+            style={{ touchAction: "pan-y" }}
+          >
+            {media[index].type === "image" && (
+              <img
+                src={getAssetUrl(media[index].url)}
+                alt={`Vista ${index + 1}`}
+                className="rounded-lg shadow-xl max-w-full max-h-[80vh] object-contain bg-black"
+              />
+            )}
+
+            {media[index].type === "video-file" && (
+              <video
+                src={getAssetUrl(media[index].url)}
+                controls
+                preload="metadata"
+                className="rounded-lg shadow-xl max-w-full max-h-[80vh] bg-black"
+              />
+            )}
+
+            {media[index].type === "video-embed" && (
+              <div
+                className="rounded-lg shadow-xl bg-black w-full"
+                style={{ aspectRatio: "16 / 9" }}
+              >
                 <iframe
-                  className="absolute inset-0 w-full h-full"
+                  className="w-full h-full rounded-lg"
                   src={media[index].embedSrc}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   title={`Video ${index + 1}`}
                 />
-              ) : (
-                <video
-                  className="absolute inset-0 w-full h-full object-contain bg-black"
-                  src={media[index].src}
-                  controls
-                  autoPlay={false}
-                  playsInline
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>,
     document.body
