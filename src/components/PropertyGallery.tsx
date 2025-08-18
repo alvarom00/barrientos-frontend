@@ -184,7 +184,10 @@ export function PropertyGallery({ images, videos }: Props) {
               exit="exit"
               transition={{ duration: 0.28, type: "tween", ease: "easeInOut" }}
               className="absolute inset-0 w-full h-full flex items-center justify-center"
-              style={{ touchAction: "pan-y" }}
+              style={{
+                touchAction: "pan-x",
+                overscrollBehavior: "contain",
+              }}
             >
               {/* 👇 tu render condicional de imagen / video tal cual */}
               {current.type === "image" && (

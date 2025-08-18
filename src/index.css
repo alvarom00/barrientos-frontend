@@ -14,6 +14,10 @@
   --color-crema-strong: rgba(255, 244, 214, 0.94);
 }
 
+html, body {
+  overscroll-behavior-y: none;
+}
+
 /* Utilidades personalizadas */
 @layer utilities {
   .animate-bounce-x {
@@ -61,6 +65,12 @@ body {
   body {
     background: var(--color-bg) !important;
     color: var(--color-text) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .bg-main-cover {
+    background-attachment: scroll !important;
   }
 }
 
