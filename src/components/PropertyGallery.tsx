@@ -1,178 +1,241 @@
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useSwipeable } from "react-swipeable";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useMemo, useRef, useState, useCallback } from "react";
 
-type GalleryItem = { type: "image" | "video"; url: string };
+type MediaItem =
+  | { kind: "image"; src: string }
+  | { kind: "video"; src: string };
 
-type PropertyGalleryProps = {
-  images: string[];
-  videoUrls?: string[];
-  onOpenLightbox?: (startIndex: number) => void;
-};
+export interface PropertyGalleryProps {
+  images?: string[];
+  videos?: string[];
+}
 
-const API_URL = import.meta.env.VITE_API_URL;
-const buildUrl = (u: string) =>
-  /^https?:\/\//i.test(u) ? u : `${API_URL?.replace(/\/$/, "")}/${u.replace(/^\//, "")}`;
+const API_URL = import.meta.env.VITE_API_URL as string;
+
+const buildImgUrl = (u: string) =>
+  /^https?:\/\//i.test(u)
+    ? u
+    : `${API_URL?.replace(/\/$/, "")}/${u.replace(/^\//, "")}`;
+
+const toMedia = (images: string[] = [], videos: string[] = []): MediaItem[] => [
+  ...images.filter(Boolean).map((src) => ({ kind: "image" as const, src })),
+  ...videos.filter(Boolean).map((src) => ({ kind: "video" as const, src })),
+];
+
+const clamp = (n: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, n));
+
+function useSwipe(
+  onSwipeLeft: () => void,
+  onSwipeRight: () => void
+): {
+  handlers: {
+    onTouchStart: React.TouchEventHandler;
+    onTouchMove: React.TouchEventHandler;
+    onTouchEnd: React.TouchEventHandler;
+  };
+  dragX: number;
+  setDragX: (x: number) => void;
+} {
+  const startX = useRef<number | null>(null);
+  const [dragX, setDragX] = useState(0);
+
+  const onTouchStart: React.TouchEventHandler = (e) => {
+    const t = e.changedTouches[0];
+    startX.current = t.clientX;
+  };
+
+  const onTouchMove: React.TouchEventHandler = (e) => {
+    const t = e.changedTouches[0];
+    if (startX.current == null) return;
+    const dx = t.clientX - startX.current;
+    setDragX(dx);
+  };
+
+  const onTouchEnd: React.TouchEventHandler = () => {
+    if (startX.current == null) return;
+    const dx = dragX;
+    startX.current = null;
+    setDragX(0);
+    const TH = 48; // umbral
+    if (dx <= -TH) onSwipeLeft();
+    else if (dx >= TH) onSwipeRight();
+  };
+
+  return {
+    handlers: { onTouchStart, onTouchMove, onTouchEnd },
+    dragX,
+    setDragX,
+  };
+}
+
+function MediaView({ item }: { item: MediaItem }) {
+  if (item.kind === "image") {
+    return (
+      <img
+        src={buildImgUrl(item.src)}
+        alt=""
+        className="w-full h-full object-cover rounded-lg"
+        loading="lazy"
+      />
+    );
+  }
+  return (
+    <div className="w-full h-full">
+      <video
+        src={buildImgUrl(item.src)}
+        controls
+        playsInline
+        className="w-full h-full object-cover rounded-lg bg-black"
+      />
+    </div>
+  );
+}
 
 export default function PropertyGallery({
-  images,
-  videoUrls = [],
-  onOpenLightbox,
+  images = [],
+  videos = [],
 }: PropertyGalleryProps) {
-  const items: GalleryItem[] = useMemo(
-    () => [
-      ...images.map((url) => ({ type: "image" as const, url })),
-      ...videoUrls.map((url) => ({ type: "video" as const, url })),
-    ],
-    [images, videoUrls]
-  );
-
+  const media = useMemo(() => toMedia(images, videos), [images, videos]);
   const [index, setIndex] = useState(0);
-  const [dir, setDir] = useState<1 | -1>(1);
+  const [anim, setAnim] = useState<"idle" | "left" | "right">("idle");
+  const [incoming, setIncoming] = useState<number | null>(null);
 
-  const total = items.length;
+  const next = useCallback(() => {
+    if (media.length <= 1 || anim !== "idle") return;
+    const to = (index + 1) % media.length;
+    setIncoming(to);
+    setAnim("left");
+  }, [anim, index, media.length]);
 
-  const go = (d: 1 | -1) => {
-    if (!total) return;
-    setDir(d);
-    setIndex((i) => (i + d + total) % total);
+  const prev = useCallback(() => {
+    if (media.length <= 1 || anim !== "idle") return;
+    const to = (index - 1 + media.length) % media.length;
+    setIncoming(to);
+    setAnim("right");
+  }, [anim, index, media.length]);
+
+  const { handlers, dragX } = useSwipe(next, prev);
+
+  const onTransitionEnd = () => {
+    if (anim === "idle" || incoming == null) return;
+    setIndex(incoming);
+    setIncoming(null);
+    setAnim("idle");
   };
 
-  const variants = {
-    enter: (direction: 1 | -1) => ({ x: direction * 40, opacity: 0 }),
-    center: { x: 0, opacity: 1 },
-    exit: (direction: 1 | -1) => ({ x: -direction * 40, opacity: 0 }),
-  };
+  // Evita scroll horizontal del documento al swippear (sólo esta caja)
+  const touchActionStyle: React.CSSProperties = { touchAction: "pan-y" };
 
-  const handlers = useSwipeable({
-    onSwipedLeft: () => go(1),
-    onSwipedRight: () => go(-1),
-    trackTouch: true,
-    preventScrollOnSwipe: true,
-    touchEventOptions: { passive: false }, // evita el “sacudón” en mobile al swipe derecha
-  });
-
-  const openLightbox = () => {
-    if (onOpenLightbox) onOpenLightbox(index);
-  };
-
-  const current = items[index];
+  const hasThumbs = media.length > 1;
 
   return (
     <div className="w-full">
-      {/* Vista principal */}
+      {/* VISOR PRINCIPAL */}
       <div
+        className="relative w-full overflow-hidden rounded-xl select-none"
+        style={touchActionStyle}
         {...handlers}
-        className="relative w-full aspect-[4/3] overflow-hidden rounded-xl bg-black/5 touch-pan-y overscroll-contain select-none"
       >
-        {/* Flechas: visibles en desktop, ocultas en mobile */}
-        <div className="pointer-events-none absolute inset-0 z-20 hidden md:block">
-          <button
-            onClick={() => go(-1)}
-            aria-label="Anterior"
-            className="pointer-events-auto absolute left-3 top-1/2 -translate-y-1/2 rounded-full p-2 bg-black/60 text-white hover:bg-black/70"
+        <div className="relative aspect-[4/3] bg-black/30">
+          {/* Capa actual */}
+          <div
+            className={`absolute inset-0 will-change-transform transition-transform duration-300 ${
+              anim === "left"
+                ? "-translate-x-full"
+                : anim === "right"
+                ? "translate-x-full"
+                : "translate-x-0"
+            }`}
+            onTransitionEnd={onTransitionEnd}
+            style={
+              anim === "idle" && dragX
+                ? { transform: `translateX(${clamp(dragX, -120, 120)}px)` }
+                : undefined
+            }
           >
-            <ChevronLeft />
-          </button>
-          <button
-            onClick={() => go(1)}
-            aria-label="Siguiente"
-            className="pointer-events-auto absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 bg-black/60 text-white hover:bg-black/70"
-          >
-            <ChevronRight />
-          </button>
-        </div>
+            <MediaView item={media[index]} />
+          </div>
 
-        {/* Capa clickeable para abrir el lightbox (no tapa controles de video) */}
-        <button
-          type="button"
-          onClick={openLightbox}
-          className="absolute inset-0 z-10 md:z-0 md:pointer-events-none"
-          aria-label="Abrir visor"
-        />
-
-        {/* Lienzo con animación (siempre en la misma posición) */}
-        <div className="absolute inset-0">
-          <AnimatePresence initial={false} custom={dir} mode="popLayout">
-            <motion.div
-              key={`${index}-${current?.url}`}
-              className="absolute inset-0 flex items-center justify-center"
-              custom={dir}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ type: "spring", stiffness: 280, damping: 28 }}
+          {/* Capa entrante sólo durante animación */}
+          {incoming != null && anim !== "idle" && (
+            <div
+              className={`absolute inset-0 will-change-transform transition-transform duration-300 ${
+                anim === "left" ? "translate-x-0" : ""
+              } ${anim === "right" ? "translate-x-0" : ""}`}
+              style={{
+                transform:
+                  anim === "left"
+                    ? "translateX(100%)"
+                    : anim === "right"
+                    ? "translateX(-100%)"
+                    : "translateX(0)",
+              }}
             >
-              {current?.type === "video" ? (
-                <div className="relative w-full h-full flex items-center justify-center bg-black">
-                  <video
-                    src={buildUrl(current.url)}
-                    controls
-                    playsInline
-                    className="max-h-full max-w-full object-contain"
-                    style={{ outline: "none" }}
-                  />
-                  {/* Ícono play de adorno cuando el video no está en reproducción (opcional) */}
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center md:hidden">
-                    <div className="rounded-full bg-black/40 p-4 text-white">
-                      <Play />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <img
-                  src={buildUrl(current?.url ?? "")}
-                  alt=""
-                  className="max-h-full max-w-full object-contain"
-                  draggable={false}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
+              <MediaView item={media[incoming]} />
+            </div>
+          )}
+
+          {/* Flechas: sólo en desktop */}
+          {media.length > 1 && (
+            <>
+              <button
+                type="button"
+                aria-label="Anterior"
+                onClick={prev}
+                className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 items-center justify-center rounded-full bg-black/35 hover:bg-black/55 text-white backdrop-blur pointer-events-auto"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                aria-label="Siguiente"
+                onClick={next}
+                className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 items-center justify-center rounded-full bg-black/35 hover:bg-black/55 text-white backdrop-blur pointer-events-auto"
+              >
+                ›
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Thumbnails (sin cambios funcionales) */}
-      {total > 1 && (
-        <div className="mt-3 grid grid-cols-5 gap-2">
-          {items.map((it, i) => {
+      {/* MINIATURAS */}
+      {hasThumbs && (
+        <div className="mt-3 flex gap-2 flex-wrap">
+          {media.map((m, i) => {
             const isActive = i === index;
             return (
               <button
-                key={`${i}-${it.url}`}
+                key={i}
                 type="button"
                 onClick={() => {
-                  setDir(i > index ? 1 : -1);
-                  setIndex(i);
+                  if (anim !== "idle" || i === index) return;
+                  // determinamos dirección "más corta"
+                  const forward = (i - index + media.length) % media.length;
+                  const backward = (index - i + media.length) % media.length;
+                  const dir: "left" | "right" =
+                    forward <= backward ? "left" : "right";
+                  setIncoming(i);
+                  setAnim(dir);
                 }}
-                className={`relative h-16 rounded-lg overflow-hidden border ${
-                  isActive ? "ring-2 ring-[#c7ae79] border-[#c7ae79]" : "border-[#ebdbb9]"
+                className={`relative w-16 h-12 rounded border ${
+                  isActive ? "border-yellow-500" : "border-[#ebdbb9]"
+                } overflow-hidden bg-black/10`}
+                aria-label={`Ver ${m.kind === "image" ? "imagen" : "video"} ${
+                  i + 1
                 }`}
-                aria-label={`Vista previa ${i + 1}`}
               >
-                {it.type === "video" ? (
-                  <div className="w-full h-full bg-black flex items-center justify-center">
-                    <video
-                      src={buildUrl(it.url)}
-                      className="h-full w-full object-cover opacity-70"
-                      muted
-                      playsInline
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="rounded-full bg-black/50 p-1.5 text-white">
-                        <Play size={16} />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
+                {m.kind === "image" ? (
                   <img
-                    src={buildUrl(it.url)}
+                    src={buildImgUrl(m.src)}
                     alt=""
-                    className="h-full w-full object-cover"
+                    className="w-full h-full object-cover"
                     loading="lazy"
                   />
+                ) : (
+                  <div className="w-full h-full grid place-content-center bg-black/70 text-white">
+                    ▶
+                  </div>
                 )}
               </button>
             );
@@ -182,3 +245,6 @@ export default function PropertyGallery({
     </div>
   );
 }
+
+// Soporta import con o sin llaves
+export { PropertyGallery };
