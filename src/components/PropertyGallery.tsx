@@ -52,14 +52,20 @@ const variants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 300 : -300,
     opacity: 0,
-    scale: 0.95,
+    scale: 0.98,
+    zIndex: 30, // 👉 por encima del que sale
   }),
-  center: { x: 0, opacity: 1, scale: 1, zIndex: 1 },
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    zIndex: 40, // slide activo arriba
+  },
   exit: (direction: number) => ({
     x: direction < 0 ? 300 : -300,
     opacity: 0,
-    scale: 0.95,
-    zIndex: 0,
+    scale: 0.98,
+    zIndex: 20, // 👉 por debajo del que entra
   }),
 };
 
@@ -91,7 +97,11 @@ export function PropertyGallery({ images, videos }: Props) {
     const container = thumbsRef.current;
     if (!container) return;
     const el = container.children[index] as HTMLElement | undefined;
-    el?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+    el?.scrollIntoView({
+      behavior: "smooth",
+      inline: "nearest",
+      block: "nearest",
+    });
   }, [index]);
 
   if (media.length === 0) return null;
@@ -123,7 +133,7 @@ export function PropertyGallery({ images, videos }: Props) {
 
   // z-index: flechas arriba del media (video/iframe)
   const arrowBtnClass =
-    "hidden md:flex absolute top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition z-40";
+    "hidden md:flex absolute top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition z-50";
 
   return (
     <div className="w-full flex flex-col items-center space-y-4">
@@ -158,11 +168,11 @@ export function PropertyGallery({ images, videos }: Props) {
           <ChevronRight size={28} />
         </button>
 
-        {/* Contenedor animado (como Lightbox) */}
+        {/* Contenedor animado */}
         <div
-          className="relative z-10 cursor-zoom-in"
+          className="relative w-full cursor-zoom-in"
           onClick={onMainClick}
-          style={{ width: "100%" }}
+          style={{ minHeight: 220 }} // altura “base” para que los children absolute se apilen bien
         >
           <AnimatePresence custom={direction} initial={false}>
             <motion.div
@@ -172,24 +182,23 @@ export function PropertyGallery({ images, videos }: Props) {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.3, type: "tween", ease: "easeInOut" }}
-              className="w-full flex items-center justify-center"
+              transition={{ duration: 0.28, type: "tween", ease: "easeInOut" }}
+              className="absolute inset-0 w-full h-full flex items-center justify-center"
               style={{ touchAction: "pan-y" }}
             >
-              {/* IMAGEN (desktop+mobile) */}
+              {/* 👇 tu render condicional de imagen / video tal cual */}
               {current.type === "image" && (
                 <img
                   src={getAssetUrl((current as any).url)}
                   alt={`Vista ${index + 1}`}
-                  className="rounded-lg shadow-lg max-w-full max-h-[420px] object-contain group-hover:opacity-90 transition bg-black"
+                  className="rounded-lg shadow-lg max-w-full max-h-[420px] h-full object-contain bg-black"
                 />
               )}
 
-              {/* VIDEO FILE */}
               {current.type === "video-file" && (
                 <>
-                  {/* Mobile: placeholder con ▶ para permitir swipe y tap->lightbox */}
-                  <div className="md:hidden relative w-full">
+                  {/* Mobile placeholder ▶ */}
+                  <div className="md:hidden relative w-full h-full flex items-center justify-center">
                     <div
                       className="rounded-lg shadow-lg w-full bg-black flex items-center justify-center"
                       style={{ aspectRatio: "16 / 9", maxHeight: 420 }}
@@ -198,23 +207,22 @@ export function PropertyGallery({ images, videos }: Props) {
                     </div>
                   </div>
 
-                  {/* Desktop: video real debajo de flechas */}
-                  <div className="hidden md:block relative w-full">
+                  {/* Desktop video real */}
+                  <div className="hidden md:block relative w-full h-full">
                     <video
                       src={getAssetUrl((current as any).url)}
                       controls
                       preload="metadata"
-                      className="rounded-lg shadow-lg max-w-full max-h-[420px] object-contain bg-black z-10"
+                      className="rounded-lg shadow-lg max-w-full max-h-[420px] h-full object-contain bg-black z-10"
                     />
                   </div>
                 </>
               )}
 
-              {/* VIDEO EMBED (YouTube/Vimeo) */}
               {current.type === "video-embed" && (
                 <>
-                  {/* Mobile: placeholder con ▶ */}
-                  <div className="md:hidden relative w-full">
+                  {/* Mobile placeholder ▶ */}
+                  <div className="md:hidden relative w-full h-full flex items-center justify-center">
                     <div
                       className="rounded-lg shadow-lg w-full bg-black flex items-center justify-center"
                       style={{ aspectRatio: "16 / 9", maxHeight: 420 }}
@@ -223,10 +231,10 @@ export function PropertyGallery({ images, videos }: Props) {
                     </div>
                   </div>
 
-                  {/* Desktop: iframe real */}
-                  <div className="hidden md:block relative w-full">
+                  {/* Desktop iframe real */}
+                  <div className="hidden md:block relative w-full h-full">
                     <div
-                      className="rounded-lg shadow-lg bg-black w-full z-10"
+                      className="rounded-lg shadow-lg bg-black w-full h-full z-10"
                       style={{ aspectRatio: "16 / 9", maxHeight: 420 }}
                     >
                       <iframe
