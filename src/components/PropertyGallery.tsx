@@ -1,7 +1,7 @@
-// PropertyGallery.tsx
 import { useState, useRef, useEffect } from "react";
 import { LightboxModal } from "./LightboxModal";
 import { getAssetUrl } from "../utils/getAssetUrl";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export type MediaItem =
   | { type: "image"; url: string }
@@ -20,8 +20,16 @@ function parseYouTube(url: string) {
     if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) {
       let id = "";
       if (u.hostname.includes("youtu.be")) id = u.pathname.slice(1);
-      else id = u.searchParams.get("v") || (u.pathname.startsWith("/embed/") ? u.pathname.split("/embed/")[1] : "");
-      if (id) return { embedSrc: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1` };
+      else
+        id =
+          u.searchParams.get("v") ||
+          (u.pathname.startsWith("/embed/")
+            ? u.pathname.split("/embed/")[1]
+            : "");
+      if (id)
+        return {
+          embedSrc: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`,
+        };
     }
   } catch {}
   return null;
@@ -38,7 +46,10 @@ function parseVimeo(url: string) {
 }
 
 export function PropertyGallery({ images, videos }: Props) {
-  const imageItems: MediaItem[] = (images || []).map((url) => ({ type: "image", url }));
+  const imageItems: MediaItem[] = (images || []).map((url) => ({
+    type: "image",
+    url,
+  }));
   const videoItems: MediaItem[] = (videos || []).map((url) => {
     const yt = parseYouTube(url);
     if (yt) return { type: "video-embed", embedSrc: yt.embedSrc };
@@ -51,34 +62,84 @@ export function PropertyGallery({ images, videos }: Props) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  // ----- FIX carrusel de miniaturas -----
+  // ----- carrusel de miniaturas -----
   const thumbsRef = useRef<HTMLDivElement>(null);
-
-  // al montar: empezar totalmente a la izquierda
   useEffect(() => {
     if (thumbsRef.current) thumbsRef.current.scrollLeft = 0;
   }, []);
-
-  // cuando cambia la activa: asegurar visibilidad
   useEffect(() => {
     const container = thumbsRef.current;
     if (!container) return;
     const el = container.children[lightboxIndex] as HTMLElement | undefined;
-    el?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+    el?.scrollIntoView({
+      behavior: "smooth",
+      inline: "nearest",
+      block: "nearest",
+    });
   }, [lightboxIndex]);
 
   if (media.length === 0) return null;
   const current = media[lightboxIndex];
 
+  // ---- Navegación local (desktop arrows + mobile swipe) ----
+  const go = (dir: number) =>
+    setLightboxIndex((i) => (i + dir + media.length) % media.length);
+
+  const startX = useRef(0);
+  const swiped = useRef(false);
+  const SWIPE_THRESHOLD = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    swiped.current = false;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - startX.current;
+    if (Math.abs(dx) > SWIPE_THRESHOLD) {
+      swiped.current = true;
+      if (dx < 0) go(1);
+      else go(-1);
+    }
+  };
+  const onMainClick = () => {
+    // si hubo swipe, ignoramos el tap para que no abra el lightbox
+    if (swiped.current) return;
+    setLightboxOpen(true);
+  };
+
   return (
     <div className="w-full flex flex-col items-center space-y-4">
-      {/* Vista principal */}
+      {/* Vista principal (tap abre lightbox; md: flechas; sm: swipe) */}
       <div
-        className="w-full flex justify-center items-center cursor-zoom-in group"
-        onClick={() => setLightboxOpen(true)}
+        className="relative w-full flex justify-center items-center cursor-zoom-in group"
+        onClick={onMainClick}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         tabIndex={0}
         aria-label="Abrir galería"
       >
+        {/* Arrows solo desktop */}
+        <button
+          className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition"
+          onClick={(e) => {
+            e.stopPropagation();
+            go(-1);
+          }}
+          aria-label="Anterior"
+        >
+          <ChevronLeft size={28} />
+        </button>
+        <button
+          className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition"
+          onClick={(e) => {
+            e.stopPropagation();
+            go(1);
+          }}
+          aria-label="Siguiente"
+        >
+          <ChevronRight size={28} />
+        </button>
+
         {current.type === "image" && (
           <img
             src={getAssetUrl((current as any).url)}
@@ -110,7 +171,7 @@ export function PropertyGallery({ images, videos }: Props) {
         )}
       </div>
 
-      {/* Miniaturas — carrusel arreglado */}
+      {/* Miniaturas */}
       <div
         ref={thumbsRef}
         className="flex gap-2 overflow-x-auto w-full justify-start px-3 py-1 snap-x snap-mandatory scroll-smooth"
