@@ -47,25 +47,25 @@ function parseVimeo(url: string) {
   return null;
 }
 
-// Animación tipo Lightbox
+// Animación tipo Lightbox (entrante por encima del saliente)
 const variants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 300 : -300,
     opacity: 0,
     scale: 0.98,
-    zIndex: 30, // 👉 por encima del que sale
+    zIndex: 30,
   }),
   center: {
     x: 0,
     opacity: 1,
     scale: 1,
-    zIndex: 40, // slide activo arriba
+    zIndex: 40,
   },
   exit: (direction: number) => ({
     x: direction < 0 ? 300 : -300,
     opacity: 0,
     scale: 0.98,
-    zIndex: 20, // 👉 por debajo del que entra
+    zIndex: 20,
   }),
 };
 
@@ -83,9 +83,7 @@ export function PropertyGallery({ images, videos }: Props) {
   });
   const media: MediaItem[] = [...imageItems, ...videoItems];
 
-  // estado (índice + dirección) para animación
   const [[index, direction], setPage] = useState<[number, number]>([0, 0]);
-
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // ----- carrusel de miniaturas -----
@@ -111,23 +109,42 @@ export function PropertyGallery({ images, videos }: Props) {
   const paginate = (dir: number) =>
     setPage([(index + dir + media.length) % media.length, dir]);
 
+  // Swipe “manual” (sin libs) cuidando no mover el fondo:
   const startX = useRef(0);
+  const startY = useRef(0);
+  const isHDrag = useRef(false);
   const swiped = useRef(false);
   const SWIPE_THRESHOLD = 50;
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    isHDrag.current = false;
     swiped.current = false;
   };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+    // Solo si el gesto es mayor en X que en Y prevenimos el scroll (para que no “salte” el fondo)
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+      isHDrag.current = true;
+      e.preventDefault(); // evitamos scroll vertical durante el gesto horizontal
+    }
+  };
+
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (!isHDrag.current) return; // era scroll vertical, no hacemos nada
     const dx = e.changedTouches[0].clientX - startX.current;
     if (Math.abs(dx) > SWIPE_THRESHOLD) {
       swiped.current = true;
       paginate(dx < 0 ? 1 : -1);
     }
   };
+
   const onMainClick = () => {
-    if (swiped.current) return; // si hubo swipe, no abrir
+    // Si hubo swipe, no abrimos el lightbox
+    if (swiped.current) return;
     setLightboxOpen(true);
   };
 
@@ -142,11 +159,12 @@ export function PropertyGallery({ images, videos }: Props) {
       <div
         className="relative w-full flex justify-center items-center group"
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         tabIndex={0}
         aria-label="Abrir galería"
       >
-        {/* Arrows solo desktop (por encima con z-40) */}
+        {/* Arrows solo desktop (por encima con z-50) */}
         <button
           className={`${arrowBtnClass} left-3`}
           onClick={(e) => {
@@ -172,7 +190,7 @@ export function PropertyGallery({ images, videos }: Props) {
         <div
           className="relative w-full cursor-zoom-in"
           onClick={onMainClick}
-          style={{ minHeight: 220 }} // altura “base” para que los children absolute se apilen bien
+          style={{ minHeight: 220 }}
         >
           <AnimatePresence custom={direction} initial={false}>
             <motion.div
@@ -185,11 +203,11 @@ export function PropertyGallery({ images, videos }: Props) {
               transition={{ duration: 0.28, type: "tween", ease: "easeInOut" }}
               className="absolute inset-0 w-full h-full flex items-center justify-center"
               style={{
-                touchAction: "pan-x",
-                overscrollBehavior: "contain",
+                touchAction: "pan-y", // permite scroll vertical
+                overscrollBehavior: "none", // evita rebote overscroll del contenedor
               }}
             >
-              {/* 👇 tu render condicional de imagen / video tal cual */}
+              {/* IMAGEN */}
               {current.type === "image" && (
                 <img
                   src={getAssetUrl((current as any).url)}
@@ -198,9 +216,10 @@ export function PropertyGallery({ images, videos }: Props) {
                 />
               )}
 
+              {/* VIDEO FILE */}
               {current.type === "video-file" && (
                 <>
-                  {/* Mobile placeholder ▶ */}
+                  {/* Mobile placeholder ▶ : no interfiere con swipe, abre lightbox con tap */}
                   <div className="md:hidden relative w-full h-full flex items-center justify-center">
                     <div
                       className="rounded-lg shadow-lg w-full bg-black flex items-center justify-center"
@@ -222,9 +241,10 @@ export function PropertyGallery({ images, videos }: Props) {
                 </>
               )}
 
+              {/* VIDEO EMBED */}
               {current.type === "video-embed" && (
                 <>
-                  {/* Mobile placeholder ▶ */}
+                  {/* Mobile placeholder ▶ : no interfiere con swipe, abre lightbox con tap */}
                   <div className="md:hidden relative w-full h-full flex items-center justify-center">
                     <div
                       className="rounded-lg shadow-lg w-full bg-black flex items-center justify-center"
