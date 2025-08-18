@@ -78,8 +78,6 @@ export function LightboxModal({
     // eslint-disable-next-line
   }, [index, media.length]);
 
-  // Medidas del área visible del contenido (para mantener tamaño consistente)
-  //  - 92vw (tope 1100px) y 80vh
   const containerStyle: React.CSSProperties = {
     width: "min(92vw, 1100px)",
     maxWidth: "1100px",
@@ -93,7 +91,7 @@ export function LightboxModal({
       onTouchEnd={handleTouchEnd}
       onClick={onClose}
     >
-      {/* Close */}
+      {/* Cerrar */}
       <button
         className="absolute top-6 right-6 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition z-2000"
         onClick={(e) => {
@@ -105,10 +103,10 @@ export function LightboxModal({
         <X size={32} />
       </button>
 
-      {/* Prev */}
+      {/* Prev — oculto en mobile */}
       <button
         className={clsx(
-          "absolute left-4 md:left-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
+          "hidden md:flex absolute left-4 md:left-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
           media.length < 2 && "opacity-0 pointer-events-none"
         )}
         onClick={(e) => {
@@ -121,10 +119,10 @@ export function LightboxModal({
         <ChevronLeft size={32} />
       </button>
 
-      {/* Next */}
+      {/* Next — oculto en mobile */}
       <button
         className={clsx(
-          "absolute right-4 md:right-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
+          "hidden md:flex absolute right-4 md:right-12 top-1/2 -translate-y-1/2 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition",
           media.length < 2 && "opacity-0 pointer-events-none"
         )}
         onClick={(e) => {
