@@ -14,7 +14,6 @@ interface Props {
   videos: string[]; // URLs (YouTube/Vimeo/MP4)
 }
 
-// Helpers — YouTube/Vimeo a embed
 function parseYouTube(url: string) {
   try {
     const u = new URL(url);
@@ -60,7 +59,6 @@ export function PropertyGallery({ images, videos }: Props) {
   const [direction, setDirection] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  // Miniaturas: autoscroll a la activa
   const thumbsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const c = thumbsRef.current;
@@ -79,11 +77,11 @@ export function PropertyGallery({ images, videos }: Props) {
     });
   };
 
-  // --- SWIPE SOLO MOBILE (sin drag continuo) ---
+  // SWIPE solo mobile (sin drag continuo)
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swiping = useRef(false);
   const SWIPE_TRIGGER_PX = 56;
-  const ANGLE_TOLERANCE = 1.2; // |dx| al menos 1.2 * |dy|
+  const ANGLE_TOLERANCE = 1.2;
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -96,9 +94,8 @@ export function PropertyGallery({ images, videos }: Props) {
     const dx = t.clientX - touchStart.current.x;
     const dy = t.clientY - touchStart.current.y;
     if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * ANGLE_TOLERANCE) {
-      // gesto claramente horizontal → evitamos que el body se “mueva”
       swiping.current = true;
-      e.preventDefault();
+      e.preventDefault(); // evita “sacudir” el body
     }
   };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -107,7 +104,6 @@ export function PropertyGallery({ images, videos }: Props) {
     const dx = t.clientX - touchStart.current.x;
     const dy = t.clientY - touchStart.current.y;
     touchStart.current = null;
-
     if (swiping.current && Math.abs(dx) > Math.abs(dy) * ANGLE_TOLERANCE && Math.abs(dx) > SWIPE_TRIGGER_PX) {
       if (dx < 0) go(1);
       else go(-1);
@@ -115,7 +111,6 @@ export function PropertyGallery({ images, videos }: Props) {
     swiping.current = false;
   };
 
-  // Variants: dos slides superpuestos (sin empujar layout)
   const variants = {
     enter: (dir: number) => ({
       x: dir > 0 ? 280 : -280,
@@ -146,9 +141,9 @@ export function PropertyGallery({ images, videos }: Props) {
 
   return (
     <div className="w-full flex flex-col items-center space-y-4">
-      {/* Vista principal: flechas sólo desktop; swipe solo mobile */}
+      {/* Viewer principal */}
       <div className="relative w-full flex justify-center items-center">
-        {/* Flecha izquierda (desktop) */}
+        {/* Flechas solo desktop */}
         <button
           type="button"
           className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 text-white bg-black/40 hover:bg-black/70 rounded-full p-2"
@@ -160,8 +155,6 @@ export function PropertyGallery({ images, videos }: Props) {
         >
           <ChevronLeft size={28} />
         </button>
-
-        {/* Flecha derecha (desktop) */}
         <button
           type="button"
           className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 text-white bg-black/40 hover:bg-black/70 rounded-full p-2"
@@ -174,15 +167,14 @@ export function PropertyGallery({ images, videos }: Props) {
           <ChevronRight size={28} />
         </button>
 
-        {/* Contenedor de animación: fijo en tamaño y sin reflow */}
+        {/* ⬇️ Altura fija para que no colapse con slides en absolute */}
         <div
-          className="relative w-full cursor-zoom-in select-none overflow-hidden rounded-lg shadow-lg bg-black"
+          className="relative w-full h-[260px] md:h-[420px] cursor-zoom-in select-none overflow-hidden rounded-lg shadow-lg bg-black"
           style={{
-            maxHeight: 420,
             WebkitBackfaceVisibility: "hidden",
             backfaceVisibility: "hidden",
             willChange: "transform",
-            touchAction: "pan-y", // permite scroll vertical de la página cuando NO estamos en swipe horizontal
+            touchAction: "pan-y",
           }}
           onClick={() => setLightboxOpen(true)}
           onTouchStart={onTouchStart}
@@ -198,13 +190,13 @@ export function PropertyGallery({ images, videos }: Props) {
               animate="center"
               exit="exit"
               transition={{ duration: 0.28, ease: "easeInOut" }}
-              className="w-full h-full flex items-center justify-center"
+              className="absolute inset-0 w-full h-full flex items-center justify-center"
             >
               {current.type === "image" && (
                 <img
                   src={getAssetUrl((current as any).url)}
                   alt={`Vista ${index + 1}`}
-                  className="max-w-full max-h-[420px] object-contain"
+                  className="w-full h-full object-contain"
                 />
               )}
 
@@ -213,15 +205,12 @@ export function PropertyGallery({ images, videos }: Props) {
                   src={getAssetUrl((current as any).url)}
                   controls
                   preload="metadata"
-                  className="max-w-full max-h-[420px] object-contain md:pointer-events-auto pointer-events-none"
+                  className="w-full h-full object-contain md:pointer-events-auto pointer-events-none"
                 />
               )}
 
               {current.type === "video-embed" && (
-                <div
-                  className="w-full md:pointer-events-auto pointer-events-none"
-                  style={{ aspectRatio: "16 / 9", maxHeight: 420 }}
-                >
+                <div className="w-full h-full md:pointer-events-auto pointer-events-none">
                   <iframe
                     className="w-full h-full"
                     src={(current as any).embedSrc}
@@ -236,7 +225,7 @@ export function PropertyGallery({ images, videos }: Props) {
         </div>
       </div>
 
-      {/* Miniaturas (igual que antes) */}
+      {/* Miniaturas */}
       <div
         ref={thumbsRef}
         className="flex gap-2 overflow-x-auto w-full justify-start px-3 py-1 snap-x snap-mandatory scroll-smooth"
@@ -280,7 +269,6 @@ export function PropertyGallery({ images, videos }: Props) {
         })}
       </div>
 
-      {/* Lightbox (sin cambios salvo flechas ocultas en mobile en su componente) */}
       {lightboxOpen && (
         <LightboxModal
           media={media}
