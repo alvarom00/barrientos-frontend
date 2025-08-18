@@ -51,8 +51,8 @@ export default function Navbar() {
             className="hidden md:flex pl-6 text-2xl lg:text-4xl leading-tight gap-2"
             style={{ fontFamily: "'PT Serif', serif" }}
           >
+            <span>CAMPOS</span>
             <span>BARRIENTOS</span>
-            <span>PROPIEDADES</span>
           </span>
         </NavLink>
 
@@ -66,8 +66,8 @@ export default function Navbar() {
           style={{ color: LOGO_COLOR, textShadow: "0 1px 1px rgba(0,0,0,.45)", fontFamily: "'PT Serif', serif" }}
           aria-label="Ir al inicio"
         >
+          <span className="block">CAMPOS</span>
           <span className="block">BARRIENTOS</span>
-          <span className="block">PROPIEDADES</span>
         </NavLink>
 
         {/* Derecha: botón menú — se mantiene al borde con ml-auto */}
