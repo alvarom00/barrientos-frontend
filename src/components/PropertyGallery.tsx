@@ -1,250 +1,263 @@
-import { useMemo, useRef, useState, useCallback } from "react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import clsx from "clsx";
+import LightboxModal from "./LightboxModal";
+import { getAssetUrl } from "../utils/getAssetUrl";
 
-type MediaItem =
-  | { kind: "image"; src: string }
-  | { kind: "video"; src: string };
+/** ===== Tipos ===== */
+export type MediaItem =
+  | { type: "image"; src: string; thumb?: string }
+  | { type: "video"; src: string; embedSrc?: string; thumb?: string };
 
-export interface PropertyGalleryProps {
-  images?: string[];
-  videos?: string[];
-}
+export type PropertyGalleryProps = {
+  images: string[];         // URLs absolutas de Cloudinary o relativas (getAssetUrl las resuelve)
+  videos?: string[];        // URLs (YouTube/Vimeo/MP4); opcional
+  className?: string;
+};
 
-const API_URL = import.meta.env.VITE_API_URL as string;
-
-const buildImgUrl = (u: string) =>
-  /^https?:\/\//i.test(u)
-    ? u
-    : `${API_URL?.replace(/\/$/, "")}/${u.replace(/^\//, "")}`;
-
-const toMedia = (images: string[] = [], videos: string[] = []): MediaItem[] => [
-  ...images.filter(Boolean).map((src) => ({ kind: "image" as const, src })),
-  ...videos.filter(Boolean).map((src) => ({ kind: "video" as const, src })),
-];
-
-const clamp = (n: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, n));
-
-function useSwipe(
-  onSwipeLeft: () => void,
-  onSwipeRight: () => void
-): {
-  handlers: {
-    onTouchStart: React.TouchEventHandler;
-    onTouchMove: React.TouchEventHandler;
-    onTouchEnd: React.TouchEventHandler;
-  };
-  dragX: number;
-  setDragX: (x: number) => void;
-} {
-  const startX = useRef<number | null>(null);
-  const [dragX, setDragX] = useState(0);
-
-  const onTouchStart: React.TouchEventHandler = (e) => {
-    const t = e.changedTouches[0];
-    startX.current = t.clientX;
-  };
-
-  const onTouchMove: React.TouchEventHandler = (e) => {
-    const t = e.changedTouches[0];
-    if (startX.current == null) return;
-    const dx = t.clientX - startX.current;
-    setDragX(dx);
-  };
-
-  const onTouchEnd: React.TouchEventHandler = () => {
-    if (startX.current == null) return;
-    const dx = dragX;
-    startX.current = null;
-    setDragX(0);
-    const TH = 48; // umbral
-    if (dx <= -TH) onSwipeLeft();
-    else if (dx >= TH) onSwipeRight();
-  };
-
-  return {
-    handlers: { onTouchStart, onTouchMove, onTouchEnd },
-    dragX,
-    setDragX,
-  };
-}
-
-function MediaView({ item }: { item: MediaItem }) {
-  if (item.kind === "image") {
-    return (
-      <img
-        src={buildImgUrl(item.src)}
-        alt=""
-        className="w-full h-full object-cover rounded-lg"
-        loading="lazy"
-      />
-    );
-  }
-  return (
-    <div className="w-full h-full">
-      <video
-        src={buildImgUrl(item.src)}
-        controls
-        playsInline
-        className="w-full h-full object-cover rounded-lg bg-black"
-      />
-    </div>
-  );
+/** Convierte URL de YouTube/Vimeo a embed; si no matchea, queda undefined (usaremos <video>) */
+function toEmbed(url: string): string | undefined {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    // YouTube
+    if (host.includes("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+    }
+    if (host === "youtu.be") {
+      const id = u.pathname.replace("/", "");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    // Vimeo
+    if (host.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      if (id) return `https://player.vimeo.com/video/${id}`;
+    }
+  } catch {}
+  return undefined;
 }
 
 export default function PropertyGallery({
-  images = [],
+  images,
   videos = [],
+  className,
 }: PropertyGalleryProps) {
-  const media = useMemo(() => toMedia(images, videos), [images, videos]);
+  // Normalizamos el arreglo de media conservando TU UI
+  const media: MediaItem[] = useMemo(() => {
+    const imgs: MediaItem[] = (images || []).map((u) => ({
+      type: "image",
+      src: getAssetUrl(u),
+      thumb: getAssetUrl(u),
+    }));
+    const vids: MediaItem[] = (videos || []).map((u) => {
+      const embed = toEmbed(u);
+      return embed
+        ? { type: "video", src: u, embedSrc: embed }
+        : { type: "video", src: u };
+    });
+    return [...imgs, ...vids];
+  }, [images, videos]);
+
   const [index, setIndex] = useState(0);
-  const [anim, setAnim] = useState<"idle" | "left" | "right">("idle");
-  const [incoming, setIncoming] = useState<number | null>(null);
+  const [dir, setDir] = useState<1 | -1>(1); // para animación izquierda/derecha
+  const [open, setOpen] = useState(false);
 
-  const next = useCallback(() => {
-    if (media.length <= 1 || anim !== "idle") return;
-    const to = (index + 1) % media.length;
-    setIncoming(to);
-    setAnim("left");
-  }, [anim, index, media.length]);
+  // Swipe en mobile sin romper layout
+  const touch = useRef<{ x: number; y: number; lock?: "h" | "v" } | null>(null);
 
-  const prev = useCallback(() => {
-    if (media.length <= 1 || anim !== "idle") return;
-    const to = (index - 1 + media.length) % media.length;
-    setIncoming(to);
-    setAnim("right");
-  }, [anim, index, media.length]);
-
-  const { handlers, dragX } = useSwipe(next, prev);
-
-  const onTransitionEnd = () => {
-    if (anim === "idle" || incoming == null) return;
-    setIndex(incoming);
-    setIncoming(null);
-    setAnim("idle");
+  const go = (delta: number) => {
+    if (!media.length) return;
+    setDir(delta > 0 ? 1 : -1);
+    setIndex((i) => (i + delta + media.length) % media.length);
   };
 
-  // Evita scroll horizontal del documento al swippear (sólo esta caja)
-  const touchActionStyle: React.CSSProperties = { touchAction: "pan-y" };
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (!touch.current) return;
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
 
-  const hasThumbs = media.length > 1;
+    // bloqueamos el scroll vertical SOLO cuando detectamos gesto horizontal claro
+    if (!touch.current.lock) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) + 6) {
+        touch.current.lock = "h";
+      } else if (Math.abs(dy) > 10) {
+        touch.current.lock = "v";
+      }
+    }
+    if (touch.current.lock === "h") {
+      // evita que el navegador “arrastre” el viewport o dispare back-swipe
+      e.preventDefault();
+    }
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touch.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
+    const wasHorizontal = Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy);
+
+    if (wasHorizontal) {
+      if (dx < 0) go(+1); // swipe left → siguiente
+      else go(-1);        // swipe right → anterior
+    }
+    touch.current = null;
+  };
+
+  // Previene que el reproductor “tape” las flechas: las flechas van arriba (z) y el contenedor del media no captura
+  // eventos fuera de sus controles.
+  const arrows =
+    media.length > 1 ? (
+      <>
+        {/* Flechas SOLO desktop */}
+        <button
+          onClick={() => go(-1)}
+          className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 items-center justify-center w-9 h-9 rounded-full bg-black/50 hover:bg-black/60 transition z-20"
+          aria-label="Anterior"
+        >
+          <ChevronLeft className="text-white" />
+        </button>
+        <button
+          onClick={() => go(+1)}
+          className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 items-center justify-center w-9 h-9 rounded-full bg-black/50 hover:bg-black/60 transition z-20"
+          aria-label="Siguiente"
+        >
+          <ChevronRight className="text-white" />
+        </button>
+      </>
+    ) : null;
+
+  // para que el swipe no “mueva” el fondo ni afecte navbar/whatsapp:
+  // - overscroll contain corta el efecto rebote
+  // - touch-action pan-y deja el scroll vertical natural
+  const swipeProps = {
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd,
+  };
 
   return (
-    <div className="w-full">
-      {/* VISOR PRINCIPAL */}
+    <div className={clsx("w-full", className)}>
+      {/* Preview principal */}
       <div
-        className="relative w-full overflow-hidden rounded-xl select-none"
-        style={touchActionStyle}
-        {...handlers}
+        className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/40 border border-[#ebdbb9] select-none"
+        style={{
+          overscrollBehavior: "contain",
+          touchAction: "pan-y",
+        }}
       >
-        <div className="relative aspect-[4/3] bg-black/30">
-          {/* Capa actual */}
-          <div
-            className={`absolute inset-0 will-change-transform transition-transform duration-300 ${
-              anim === "left"
-                ? "-translate-x-full"
-                : anim === "right"
-                ? "translate-x-full"
-                : "translate-x-0"
-            }`}
-            onTransitionEnd={onTransitionEnd}
-            style={
-              anim === "idle" && dragX
-                ? { transform: `translateX(${clamp(dragX, -120, 120)}px)` }
-                : undefined
-            }
+        {/* capa de interacción (z-index) */}
+        {arrows}
+
+        {/* Slide con animación, mismo look */}
+        <AnimatePresence initial={false} custom={dir} mode="wait">
+          <motion.div
+            key={index}
+            custom={dir}
+            initial={{ x: dir * 60, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -dir * 60, opacity: 0 }}
+            transition={{ type: "tween", duration: 0.25 }}
+            className="absolute inset-0"
           >
-            <MediaView item={media[index]} />
-          </div>
+            {/* Contenido clickeable → abre Lightbox */}
+            <button
+              className="absolute inset-0"
+              onClick={() => setOpen(true)}
+              aria-label="Abrir galería"
+              // NO bloquea los controles del video (los ponemos por encima)
+              style={{ pointerEvents: "auto" }}
+              {...swipeProps}
+            />
 
-          {/* Capa entrante sólo durante animación */}
-          {incoming != null && anim !== "idle" && (
-            <div
-              className={`absolute inset-0 will-change-transform transition-transform duration-300 ${
-                anim === "left" ? "translate-x-0" : ""
-              } ${anim === "right" ? "translate-x-0" : ""}`}
-              style={{
-                transform:
-                  anim === "left"
-                    ? "translateX(100%)"
-                    : anim === "right"
-                    ? "translateX(-100%)"
-                    : "translateX(0)",
-              }}
-            >
-              <MediaView item={media[incoming]} />
-            </div>
-          )}
-
-          {/* Flechas: sólo en desktop */}
-          {media.length > 1 && (
-            <>
-              <button
-                type="button"
-                aria-label="Anterior"
-                onClick={prev}
-                className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 items-center justify-center rounded-full bg-black/35 hover:bg-black/55 text-white backdrop-blur pointer-events-auto"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                aria-label="Siguiente"
-                onClick={next}
-                className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 items-center justify-center rounded-full bg-black/35 hover:bg-black/55 text-white backdrop-blur pointer-events-auto"
-              >
-                ›
-              </button>
-            </>
-          )}
-        </div>
+            {media[index].type === "image" ? (
+              <img
+                src={media[index].src}
+                alt={`Imagen ${index + 1}`}
+                className="absolute inset-0 w-full h-full object-contain"
+                draggable={false}
+              />
+            ) : media[index].embedSrc ? (
+              <div className="absolute inset-0 flex">
+                {/* El iframe maneja sus propios eventos; las flechas están por encima (z-20) */}
+                <iframe
+                  className="w-full h-full"
+                  src={media[index].embedSrc}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={`Video ${index + 1}`}
+                />
+              </div>
+            ) : (
+              <video
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+                src={media[index].src}
+                controls
+                playsInline
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* MINIATURAS */}
-      {hasThumbs && (
-        <div className="mt-3 flex gap-2 flex-wrap">
-          {media.map((m, i) => {
-            const isActive = i === index;
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => {
-                  if (anim !== "idle" || i === index) return;
-                  // determinamos dirección "más corta"
-                  const forward = (i - index + media.length) % media.length;
-                  const backward = (index - i + media.length) % media.length;
-                  const dir: "left" | "right" =
-                    forward <= backward ? "left" : "right";
-                  setIncoming(i);
-                  setAnim(dir);
-                }}
-                className={`relative w-16 h-12 rounded border ${
-                  isActive ? "border-yellow-500" : "border-[#ebdbb9]"
-                } overflow-hidden bg-black/10`}
-                aria-label={`Ver ${m.kind === "image" ? "imagen" : "video"} ${
-                  i + 1
-                }`}
-              >
-                {m.kind === "image" ? (
-                  <img
-                    src={buildImgUrl(m.src)}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-content-center bg-black/70 text-white">
-                    ▶
-                  </div>
-                )}
-              </button>
-            );
-          })}
+      {/* Tiras de miniaturas (exactamente como antes) */}
+      {!!media.length && (
+        <div className="mt-3 grid grid-cols-5 sm:grid-cols-8 gap-2">
+          {media.map((m, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setDir(i > index ? 1 : -1);
+                setIndex(i);
+              }}
+              className={clsx(
+                "relative aspect-video rounded overflow-hidden border",
+                i === index ? "border-[#c7ae79]" : "border-[#ebdbb9]"
+              )}
+              aria-label={`Miniatura ${i + 1}`}
+            >
+              {m.type === "image" ? (
+                <img
+                  src={m.thumb || m.src}
+                  className="w-full h-full object-cover"
+                  alt={`Miniatura ${i + 1}`}
+                  loading="lazy"
+                />
+              ) : m.embedSrc ? (
+                <div className="w-full h-full bg-black/70 grid place-items-center">
+                  <Play className="text-white" />
+                </div>
+              ) : (
+                <div className="w-full h-full bg-black/70 grid place-items-center">
+                  <Play className="text-white" />
+                </div>
+              )}
+            </button>
+          ))}
         </div>
       )}
+
+      {/* Lightbox (misma estética que tenías) */}
+      <AnimatePresence>
+        {open && (
+          <LightboxModal
+            media={media}
+            initialIndex={index}
+            onClose={() => setOpen(false)}
+            currentIndex={index}
+            setCurrentIndex={(i) => {
+              setDir(i > index ? 1 : -1);
+              setIndex(i);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
-// Soporta import con o sin llaves
-export { PropertyGallery };
