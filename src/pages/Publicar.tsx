@@ -344,7 +344,7 @@ export default function Publicar() {
         "
         disabled={loading}
       >
-        {loading ? "Enviando..." : "Enviar consulta"}
+        {loading ? "Enviando..." : "Enviar"}
       </button>
 
       {success && (
