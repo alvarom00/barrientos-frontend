@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import PropertyCard from "../components/PropertyCard";
 import type { IProperty } from "../components/PropertyCard";
 import { motion } from "framer-motion";
+import { api } from "../api";
 
 interface CamposProps {
   operationType?: string;
 }
 
 const stagger = 0.1;
-const API = import.meta.env.VITE_API_URL;
 const PAGE_SIZE = 6;
 
 const gridVariants = {
@@ -41,13 +41,14 @@ export default function Campos({ operationType }: CamposProps) {
 
   useEffect(() => {
     setLoading(true);
-    const params = new URLSearchParams();
-    params.append("page", currentPage.toString());
-    params.append("pageSize", PAGE_SIZE.toString());
-    if (operationType) params.append("operationType", operationType);
-
-    fetch(`${API}/properties?${params}`)
-      .then((res) => res.json())
+    api
+      .get<{ properties: IProperty[]; total: number }>("/properties", {
+        query: {
+          page: currentPage,
+          pageSize: PAGE_SIZE,
+          operationType,
+        },
+      })
       .then((data) => {
         setProperties(data.properties ?? []);
         setTotal(data.total ?? 0);
