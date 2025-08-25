@@ -25,7 +25,7 @@ function ServiceRow({
       {/* Texto */}
       <div>
         <h3
-          className="text-2xl font-semibold mb-3 text-black capitalize"
+          className="text-2xl font-semibold mb-3 text-black capitalize text-center"
           style={{ fontFamily: "'Libre Baskerville', serif" }}
         >
           {title}
@@ -162,7 +162,7 @@ perspectiva clara, impactante y realista.`}
             text={`Creamos y editamos videos promocionales de alta calidad, especialmente diseñados para potenciar la
 visibilidad de cada propiedad en nuestros sitios web y redes sociales. Este material es clave para destacar en un
 mundo cada vez más visual y competitivo.`}
-            img="/edicion.webp"
+            img="/aereas.png"
             imgAlt="Edición de video promocional de un campo"
             imageRight={false}
           />

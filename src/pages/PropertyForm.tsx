@@ -59,11 +59,9 @@ type FormValues = {
 
   // “Vivienda” condicional
   environments?: number | null;
-  environmentsList?: string[];
   bedrooms?: number | null;
   bathrooms?: number | null;
   condition?: ConditionType;
-  age?: number | null;
   houseMeasures?: number | null;
 };
 
@@ -209,13 +207,6 @@ export default function PropertyFormRH() {
               : [""]
             : undefined,
 
-          // 👇 normalizamos a number si viniera como string
-          age: hasVivienda
-            ? data.age === 0 || data.age
-              ? Number(data.age)
-              : undefined
-            : undefined,
-
           houseMeasures: hasVivienda
             ? data.houseMeasures === 0 || data.houseMeasures
               ? Number(data.houseMeasures)
@@ -255,26 +246,29 @@ export default function PropertyFormRH() {
   useEffect(() => {
     if (!hasVivienda) {
       setValue("environments", undefined);
-      setValue("environmentsList", undefined);
       setValue("bedrooms", undefined);
       setValue("bathrooms", undefined);
       setValue("condition", undefined);
-      setValue("age", undefined);
       setValue("houseMeasures", undefined);
       clearErrors([
         "environments",
-        "environmentsList",
         "bedrooms",
         "bathrooms",
         "condition",
-        "age",
         "houseMeasures",
       ]);
     } else {
-      const curr = getValues("environmentsList");
-      if (!curr || curr.length === 0) {
-        setValue("environmentsList", [""]);
-      }
+      const vals = getValues();
+      if (vals.environments === undefined)
+        setValue("environments", null, { shouldDirty: true });
+      if (vals.bedrooms === undefined)
+        setValue("bedrooms", null, { shouldDirty: true });
+      if (vals.bathrooms === undefined)
+        setValue("bathrooms", null, { shouldDirty: true });
+      if (vals.condition === undefined)
+        setValue("condition", "", { shouldDirty: true });
+      if (vals.houseMeasures === undefined)
+        setValue("houseMeasures", null, { shouldDirty: true });
     }
   }, [hasVivienda, setValue, clearErrors, getValues]);
 
@@ -330,13 +324,9 @@ export default function PropertyFormRH() {
     // Vivienda
     if (data.extras?.includes("Vivienda")) {
       appendIf("environments", data.environments);
-      (data.environmentsList ?? []).forEach((v) =>
-        appendIf("environmentsList[]", v)
-      );
       appendIf("bedrooms", data.bedrooms);
       appendIf("bathrooms", data.bathrooms);
       appendIf("condition", data.condition);
-      appendIf("age", data.age);
       appendIf("houseMeasures", data.houseMeasures);
     }
 
@@ -761,68 +751,7 @@ export default function PropertyFormRH() {
                     </p>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Antigüedad (años)
-                  </label>
-                  <input
-                    {...register("age", { valueAsNumber: true })}
-                    type="number"
-                    placeholder="Ej: 10"
-                    className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
-                    aria-invalid={!!errors.age}
-                  />
-                  {errors.age?.message && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.age.message as string}
-                    </p>
-                  )}
-                </div>
               </div>
-
-              {/* Lista de ambientes */}
-              <Controller
-                name="environmentsList"
-                control={control}
-                render={({ field }) => {
-                  const items = Array.isArray(field.value)
-                    ? field.value.map((v) => String(v ?? ""))
-                    : [""];
-                  return (
-                    <>
-                      <DynamicList
-                        label="Ambientes (lista)"
-                        items={items}
-                        placeholder="Ej: Living, Cocina, Comedor…"
-                        onChange={(i, v) =>
-                          field.onChange(
-                            items.map((x, ix) =>
-                              ix === i ? String(v ?? "") : x
-                            )
-                          )
-                        }
-                        onAdd={() => field.onChange([...items, ""])}
-                        onRemove={(i) =>
-                          field.onChange(items.filter((_, ix) => ix !== i))
-                        }
-                      />
-                      {(errors.environmentsList as any)?.message && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {(errors.environmentsList as any).message}
-                        </p>
-                      )}
-                      {Array.isArray(errors.environmentsList) &&
-                        (errors.environmentsList as any[]).map((e, idx) =>
-                          e?.message ? (
-                            <p key={idx} className="mt-1 text-sm text-red-500">
-                              {e.message}
-                            </p>
-                          ) : null
-                        )}
-                    </>
-                  );
-                }}
-              />
 
               {/* Superficie cubierta (m²) */}
               <div>

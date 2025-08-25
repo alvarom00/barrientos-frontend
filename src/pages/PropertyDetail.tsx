@@ -23,11 +23,9 @@ interface IProperty {
   videoUrls: string[];
   operationType: string;
   environments: number;
-  environmentsList: string[];
   bedrooms: number;
   bathrooms: number;
   condition: string;
-  age: string;
   houseMeasures: string[];
   services: string[];
   extras: string[];
@@ -144,7 +142,7 @@ export default function PropertyDetail() {
         {/* HEADER */}
         <section className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 border-b border-primary/20 pb-4">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl md:text-3xl font-bold break-words break-all drop-shadow mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold break-words whitespace-normal hyphens-none drop-shadow mb-2">
               {property.title}
             </h1>
             <p className="mt-1 truncate md:whitespace-normal !text-[#514737]">
@@ -156,7 +154,7 @@ export default function PropertyDetail() {
               {property.operationType === "Arrendamiento"
                 ? "Precio a acordar"
                 : property.price
-                ? `$${property.price.toLocaleString()}`
+                ? `U$S${property.price.toLocaleString()}`
                 : "Sin precio"}
             </span>
             <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded text-sm font-semibold mt-2">
@@ -266,26 +264,7 @@ export default function PropertyDetail() {
                       <strong>Condición:</strong> {property.condition}
                     </div>
                   )}
-                  {property.age && (
-                    <div>
-                      <strong>Antigüedad:</strong> {property.age}
-                    </div>
-                  )}
                 </div>
-              </div>
-              <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow">
-                <h2 className="text-xl font-bold mb-2">Ambientes</h2>
-                <ul className="flex flex-wrap gap-2">
-                  {property.environmentsList?.filter(Boolean).map((amb, i) => (
-                    <li
-                      key={i}
-                      className="flex items-center bg-green-800/10 rounded px-2 py-1"
-                    >
-                      <Check className="w-4 h-4 text-green-500 mr-1" />
-                      {amb}
-                    </li>
-                  ))}
-                </ul>
               </div>
             </>
           )}

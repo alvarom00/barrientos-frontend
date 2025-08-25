@@ -129,20 +129,6 @@ export const propertySchema = yup
         otherwise: (s) => s.notRequired().nullable(),
       }),
 
-    environmentsList: yup
-      .array()
-      .of(
-        yup
-          .string()
-          .min(2, "Cada ambiente debe tener al menos 2 caracteres.")
-          .required("El ambiente es obligatorio.")
-      )
-      .when("extras", {
-        is: (extras: string[] = []) => extras.includes("Vivienda"),
-        then: (s) => s.min(1, "Debes agregar al menos un ambiente.").required(),
-        otherwise: (s) => s.notRequired(),
-      }),
-
     bedrooms: yup
       .number()
       .nullable()
@@ -180,20 +166,6 @@ export const propertySchema = yup
             .oneOf([...CONDITION_OPTIONS], "Estado inválido")
             .required("Condición requerida"),
         otherwise: (s) => s.notRequired(),
-      }),
-
-    age: yup
-      .number()
-      .nullable()
-      .transform((v, o) => (o === "" || o === undefined ? null : v))
-      .when("extras", {
-        is: (extras: string[] = []) => extras.includes("Vivienda"),
-        then: (s) =>
-          s
-            .typeError("Debe ser número")
-            .min(0, "No puede ser negativo")
-            .required("Antigüedad requerida"),
-        otherwise: (s) => s.notRequired().nullable(),
       }),
 
     houseMeasures: yup
