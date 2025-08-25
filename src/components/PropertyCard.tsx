@@ -53,7 +53,7 @@ export default function PropertyCard({ property }: { property: IProperty }) {
           {property.operationType === "Arrendamiento"
             ? "Precio a acordar"
             : property.price
-            ? `U$S${property.price.toLocaleString()}`
+            ? `U$S ${property.price.toLocaleString()}`
             : "Sin precio"}
         </p>
       </div>

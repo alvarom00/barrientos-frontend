@@ -151,7 +151,7 @@ export default function Home(): React.JSX.Element {
             text={`Capturamos la esencia de cada campo con imágenes satelitales y tomas aéreas realizadas con drones
 profesionales. Este material visual de alta calidad permite mostrar cada rincón de la propiedad desde una
 perspectiva clara, impactante y realista.`}
-            img="/dron.jpg"
+            img="/edicion.jpg"
             imgAlt="Toma aérea con dron de un campo"
             imageRight
           />

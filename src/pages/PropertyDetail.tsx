@@ -154,7 +154,7 @@ export default function PropertyDetail() {
               {property.operationType === "Arrendamiento"
                 ? "Precio a acordar"
                 : property.price
-                ? `U$S${property.price.toLocaleString()}`
+                ? `U$S ${property.price.toLocaleString()}`
                 : "Sin precio"}
             </span>
             <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded text-sm font-semibold mt-2">
