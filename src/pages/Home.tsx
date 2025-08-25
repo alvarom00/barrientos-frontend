@@ -195,7 +195,7 @@ positiva y transparente.`}
             text={`Ofrecemos servicios de asesoramiento y acompañamiento profesional durante todo el proceso, desde la
 tasación inicial hasta la firma del contrato o escritura. Nuestro equipo se encarga de cada detalle, garantizando
 operaciones eficientes, seguras y exitosas.`}
-            img="/asesoramiento.jpg"
+            img="/asesoramiento.png"
             imgAlt="Reunión de asesoramiento profesional"
             imageRight
           />
