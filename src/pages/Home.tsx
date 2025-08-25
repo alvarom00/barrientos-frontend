@@ -31,7 +31,7 @@ function ServiceRow({
           {title}
         </h3>
         <p
-          className="text-lg leading-relaxed text-neutral-800"
+          className="text-lg leading-relaxed text-neutral-800 text-center"
           style={{ fontFamily: "'PT Serif', serif" }}
         >
           {text}
