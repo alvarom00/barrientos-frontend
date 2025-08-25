@@ -173,7 +173,7 @@ mundo cada vez más visual y competitivo.`}
             text={`Publicamos cada propiedad en nuestros sitios web, redes sociales y en más de 10 portales inmobiliarios
 de alcance nacional e internacional, asegurando una difusión efectiva y orientada al público objetivo. Nuestro
 enfoque combina tecnología y estrategia para maximizar las oportunidades de venta o alquiler.`}
-            img="/publicar.webp"
+            img="/publicar.jpg"
             imgAlt="Promoción de propiedades en portales y redes"
             imageRight
           />
