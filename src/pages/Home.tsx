@@ -151,7 +151,7 @@ export default function Home(): React.JSX.Element {
             text={`Capturamos la esencia de cada campo con imágenes satelitales y tomas aéreas realizadas con drones
 profesionales. Este material visual de alta calidad permite mostrar cada rincón de la propiedad desde una
 perspectiva clara, impactante y realista.`}
-            img="/edicion.jpg"
+            img="/aereas.jpg"
             imgAlt="Toma aérea con dron de un campo"
             imageRight
           />
@@ -162,7 +162,7 @@ perspectiva clara, impactante y realista.`}
             text={`Creamos y editamos videos promocionales de alta calidad, especialmente diseñados para potenciar la
 visibilidad de cada propiedad en nuestros sitios web y redes sociales. Este material es clave para destacar en un
 mundo cada vez más visual y competitivo.`}
-            img="/aereas.png"
+            img="/edicion.png"
             imgAlt="Edición de video promocional de un campo"
             imageRight={false}
           />
