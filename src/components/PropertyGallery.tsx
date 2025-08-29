@@ -26,7 +26,10 @@ function parseYouTube(url: string) {
           (u.pathname.startsWith("/embed/")
             ? u.pathname.split("/embed/")[1]
             : "");
-      if (id) return { embedSrc: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1` };
+      if (id)
+        return {
+          embedSrc: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`,
+        };
     }
   } catch {}
   return null;
@@ -64,7 +67,11 @@ export function PropertyGallery({ images, videos }: Props) {
     const c = thumbsRef.current;
     if (!c) return;
     const el = c.children[index] as HTMLElement | undefined;
-    el?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+    el?.scrollIntoView({
+      behavior: "smooth",
+      inline: "nearest",
+      block: "nearest",
+    });
   }, [index]);
 
   if (!media.length) return null;
@@ -88,28 +95,47 @@ export function PropertyGallery({ images, videos }: Props) {
     touchStart.current = { x: t.clientX, y: t.clientY };
     swiping.current = false;
   };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    const t = e.touches[0];
-    const dx = t.clientX - touchStart.current.x;
-    const dy = t.clientY - touchStart.current.y;
-    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * ANGLE_TOLERANCE) {
-      swiping.current = true;
-      e.preventDefault(); // evita “sacudir” el body
-    }
-  };
   const onTouchEnd = (e: React.TouchEvent) => {
     if (!touchStart.current) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStart.current.x;
     const dy = t.clientY - touchStart.current.y;
     touchStart.current = null;
-    if (swiping.current && Math.abs(dx) > Math.abs(dy) * ANGLE_TOLERANCE && Math.abs(dx) > SWIPE_TRIGGER_PX) {
+    if (
+      swiping.current &&
+      Math.abs(dx) > Math.abs(dy) * ANGLE_TOLERANCE &&
+      Math.abs(dx) > SWIPE_TRIGGER_PX
+    ) {
       if (dx < 0) go(1);
       else go(-1);
     }
     swiping.current = false;
   };
+
+  // ✅ Listener nativo con { passive: false } para evitar el warning
+  const viewerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = viewerRef.current;
+    if (!el) return;
+
+    const handler = (ev: TouchEvent) => {
+      if (!touchStart.current) return;
+      const t = ev.touches[0];
+      const dx = t.clientX - touchStart.current.x;
+      const dy = t.clientY - touchStart.current.y;
+
+      if (
+        Math.abs(dx) > 10 &&
+        Math.abs(dx) > Math.abs(dy) * ANGLE_TOLERANCE
+      ) {
+        swiping.current = true;
+        ev.preventDefault(); // bloquea el scroll vertical solo durante el swipe horizontal
+      }
+    };
+
+    el.addEventListener("touchmove", handler, { passive: false });
+    return () => el.removeEventListener("touchmove", handler);
+  }, []);
 
   const variants = {
     enter: (dir: number) => ({
@@ -169,16 +195,17 @@ export function PropertyGallery({ images, videos }: Props) {
 
         {/* ⬇️ Altura fija para que no colapse con slides en absolute */}
         <div
+          ref={viewerRef}
           className="relative w-full h-[260px] md:h-[420px] cursor-zoom-in select-none overflow-hidden rounded-lg shadow-lg bg-black"
           style={{
             WebkitBackfaceVisibility: "hidden",
             backfaceVisibility: "hidden",
             willChange: "transform",
             touchAction: "pan-y",
+            overscrollBehavior: "contain",
           }}
           onClick={() => setLightboxOpen(true)}
           onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
           <AnimatePresence custom={direction} initial={false} mode="popLayout">
