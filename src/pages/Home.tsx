@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import React from "react";
+import PropertiesMap from "../components/PropertiesMap";
 
 type ServiceRowProps = {
   title: string;
@@ -108,6 +109,10 @@ export default function Home(): React.JSX.Element {
           >
             Quiero alquilar un campo
           </NavLink>
+        </div>
+
+        <div className="mt-8">
+          <PropertiesMap />
         </div>
       </div>
 
