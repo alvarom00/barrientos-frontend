@@ -1,3 +1,7 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/robots.txt", "destination": "https://api.camposbarrientos.com/robots.txt" },
+    { "source": "/sitemap.xml", "destination": "https://api.camposbarrientos.com/sitemap.xml" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import React from "react";
 import PropertiesMap from "../components/PropertiesMap";
+import Seo from "../components/Seo";
 
 type ServiceRowProps = {
   title: string;
@@ -52,8 +53,19 @@ function ServiceRow({
 }
 
 export default function Home(): React.JSX.Element {
+  const canonical =
+    typeof window !== "undefined"
+      ? `https://camposbarrientos.com${window.location.pathname}${window.location.search}`
+      : undefined;
+
   return (
     <div className="mt-15 md:mt-15 flex flex-col items-center min-h-[60vh] gap-10">
+      <Seo
+        title="Campos Barrientos — Campos en venta y arrendamiento"
+        description="Compra, venta y arrendamiento de campos. Asesoramiento profesional y difusión en múltiples canales."
+        canonical={canonical}
+      />
+
       {/* CONTENEDOR EXISTENTE */}
       <div className="bg-crema rounded-2xl shadow-xl p-8 max-w-xl w-full animate-fade-in text-center border border-[#f2dbb1]">
         <h1

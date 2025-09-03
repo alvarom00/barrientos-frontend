@@ -1,6 +1,19 @@
+import Seo from "../components/Seo";
+
 export default function Nosotros() {
+  const canonical =
+    typeof window !== "undefined"
+      ? `https://camposbarrientos.com${window.location.pathname}${window.location.search}`
+      : undefined;
+
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 py-10 flex flex-col items-center animate-fade-in">
+      <Seo
+        title="Nosotros — Campos Barrientos"
+        description="Quiénes somos, nuestra experiencia en compra, venta y administración de campos y el enfoque humano con el que trabajamos."
+        canonical={canonical}
+      />
+
       <div className="w-full bg-crema rounded-2xl shadow-xl p-6 sm:p-10 border border-[#ebdbb9]">
         <h1
           className="text-2xl sm:text-3xl font-bold mb-4 text-center drop-shadow text-black uppercase"

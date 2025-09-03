@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { Check } from "lucide-react";
@@ -8,6 +8,7 @@ import { PropertyGallery } from "../components/PropertyGallery";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import Seo from "../components/Seo";
 
 interface IProperty {
   _id: string;
@@ -33,14 +34,8 @@ interface IProperty {
 
 const schema = yup.object().shape({
   nombre: yup.string().required("El nombre es obligatorio"),
-  email: yup
-    .string()
-    .email("Email inválido")
-    .required("El email es obligatorio"),
-  telefono: yup
-    .string()
-    .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
-    .required("El teléfono es obligatorio"),
+  email: yup.string().email("Email inválido").required("El email es obligatorio"),
+  telefono: yup.string().matches(/^\d{6,}$/, "Ingrese un número de teléfono válido").required("El teléfono es obligatorio"),
   mensaje: yup.string().required("El mensaje es obligatorio"),
 });
 
@@ -90,6 +85,25 @@ export default function PropertyDetail() {
       .catch(() => setPropertyLoading(false));
   }, [id]);
 
+  const canonical = useMemo(
+    () =>
+      property
+        ? `https://camposbarrientos.com/properties/${property._id}`
+        : typeof window !== "undefined"
+        ? `https://camposbarrientos.com${window.location.pathname}${window.location.search}`
+        : undefined,
+    [property]
+  );
+
+  const description = useMemo(() => {
+    if (!property) return undefined;
+    const base =
+      property.description && property.description.trim().length > 0
+        ? property.description
+        : `${property.measure?.toLocaleString()} ha — ${property.location} — ${property.operationType}`;
+    return base.length > 160 ? `${base.slice(0, 157)}…` : base;
+  }, [property]);
+
   if (propertyLoading) {
     return <p className="p-8">Cargando propiedad…</p>;
   }
@@ -130,14 +144,16 @@ export default function PropertyDetail() {
     }
   }
 
-  if (!property) {
-    return <p className="p-8">Cargando propiedad…</p>;
-  }
-
   const pos: [number, number] = [property.lat ?? 0, property.lng ?? 0];
 
   return (
     <div className="max-w-5xl mx-auto px-2 sm:px-4 py-8">
+      <Seo
+        title={`${property.title} — Campos Barrientos`}
+        description={description}
+        canonical={canonical}
+      />
+
       <div className="bg-crema rounded-2xl shadow-xl p-4 sm:p-8 space-y-10 animate-fade-in border border-[#ebdbb9]">
         {/* HEADER */}
         <section className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 border-b border-primary/20 pb-4">
@@ -166,10 +182,7 @@ export default function PropertyDetail() {
         {/* GALERÍA */}
         <section className="w-full flex flex-col items-center">
           <div className="w-full max-w-2xl mx-auto bg-crema-strong rounded-xl shadow p-2">
-            <PropertyGallery
-              images={property.imageUrls}
-              videos={property.videoUrls}
-            />
+            <PropertyGallery images={property.imageUrls} videos={property.videoUrls} />
           </div>
         </section>
 
@@ -221,7 +234,7 @@ export default function PropertyDetail() {
               : "grid gap-6"
           }
         >
-          {/* DESCRIPCIÓN: SIEMPRE UNA SOLA COLUMNA, TODA LA FILA */}
+          {/* DESCRIPCIÓN */}
           {property.description && (
             <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow md:col-span-2">
               <h2 className="text-xl font-bold mb-2">Descripción</h2>
@@ -235,9 +248,7 @@ export default function PropertyDetail() {
           {property.extras?.includes("Vivienda") && (
             <>
               <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow">
-                <h2 className="text-xl font-bold mb-2">
-                  Detalles de la vivienda
-                </h2>
+                <h2 className="text-xl font-bold mb-2">Detalles de la vivienda</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   {property.houseMeasures && (
                     <div>
@@ -275,10 +286,7 @@ export default function PropertyDetail() {
               <h2 className="text-xl font-bold mb-2">Servicios</h2>
               <ul className="flex flex-wrap gap-2">
                 {property.services.filter(Boolean).map((serv, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center bg-blue-800/10 rounded px-2 py-1"
-                  >
+                  <li key={i} className="flex items-center bg-blue-800/10 rounded px-2 py-1">
                     <Check className="w-4 h-4 text-blue-500 mr-1" />
                     {serv}
                   </li>
@@ -293,10 +301,7 @@ export default function PropertyDetail() {
               <h2 className="text-xl font-bold mb-2">Extras</h2>
               <ul className="flex flex-wrap gap-2">
                 {property.extras.filter(Boolean).map((ext, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center bg-yellow-800/10 rounded px-2 py-1"
-                  >
+                  <li key={i} className="flex items-center bg-yellow-800/10 rounded px-2 py-1">
                     <Check className="w-4 h-4 text-red-700 mr-1" />
                     {ext}
                   </li>
@@ -322,9 +327,7 @@ export default function PropertyDetail() {
                 disabled={propertyLoading}
               />
               {errors.nombre && (
-                <p className="text-red-400 text-sm mt-1">
-                  {errors.nombre.message}
-                </p>
+                <p className="text-red-400 text-sm mt-1">{errors.nombre.message}</p>
               )}
             </div>
             <div>
@@ -335,9 +338,7 @@ export default function PropertyDetail() {
                 disabled={propertyLoading}
               />
               {errors.email && (
-                <p className="text-red-400 text-sm mt-1">
-                  {errors.email.message}
-                </p>
+                <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>
               )}
             </div>
             <div>
@@ -352,9 +353,7 @@ export default function PropertyDetail() {
                 }}
               />
               {errors.telefono && (
-                <p className="text-red-400 text-sm mt-1">
-                  {errors.telefono.message}
-                </p>
+                <p className="text-red-400 text-sm mt-1">{errors.telefono.message}</p>
               )}
             </div>
             <div>
@@ -366,9 +365,7 @@ export default function PropertyDetail() {
                 placeholder="Escribe tu mensaje"
               />
               {errors.mensaje && (
-                <p className="text-red-400 text-sm mt-1">
-                  {errors.mensaje.message}
-                </p>
+                <p className="text-red-400 text-sm mt-1">{errors.mensaje.message}</p>
               )}
             </div>
             <button
@@ -382,9 +379,7 @@ export default function PropertyDetail() {
             {msg && (
               <div
                 className={`mt-3 text-center font-semibold ${
-                  msg.includes("correctamente")
-                    ? "text-green-400"
-                    : "text-red-400"
+                  msg.includes("correctamente") ? "text-green-400" : "text-red-400"
                 }`}
               >
                 {msg}
