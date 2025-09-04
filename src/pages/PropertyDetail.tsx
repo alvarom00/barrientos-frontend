@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -30,17 +30,23 @@ interface IProperty {
   houseMeasures: string[];
   services: string[];
   extras: string[];
+  slug?: string; // 👈 opcional, por compat
 }
 
 const schema = yup.object().shape({
   nombre: yup.string().required("El nombre es obligatorio"),
   email: yup.string().email("Email inválido").required("El email es obligatorio"),
-  telefono: yup.string().matches(/^\d{6,}$/, "Ingrese un número de teléfono válido").required("El teléfono es obligatorio"),
+  telefono: yup
+    .string()
+    .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
+    .required("El teléfono es obligatorio"),
   mensaje: yup.string().required("El mensaje es obligatorio"),
 });
 
 export default function PropertyDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id, slug } = useParams<{ id: string; slug?: string }>(); // 👈 también leo slug
+  const navigate = useNavigate();
+
   const [property, setProperty] = useState<IProperty | null>(null);
   const [propertyLoading, setPropertyLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -76,24 +82,34 @@ export default function PropertyDetail() {
   useEffect(() => {
     setPropertyLoading(true);
     if (!id) return;
+    // El backend acepta id o slug, pero desde la lista venís con id. Mantengo id.
     fetch(`${API}/properties/${id}`)
       .then((res) => res.json())
-      .then((data) => {
+      .then((data: IProperty) => {
         setProperty(data);
         setPropertyLoading(false);
       })
       .catch(() => setPropertyLoading(false));
   }, [id]);
 
-  const canonical = useMemo(
-    () =>
-      property
-        ? `https://camposbarrientos.com/properties/${property._id}`
-        : typeof window !== "undefined"
-        ? `https://camposbarrientos.com${window.location.pathname}${window.location.search}`
-        : undefined,
-    [property]
-  );
+  // 👇 Canonical y redirección a /properties/:id/:slug si corresponde
+  useEffect(() => {
+    if (!property) return;
+    if (property.slug && slug !== property.slug) {
+      navigate(`/properties/${property._id}/${property.slug}`, { replace: true });
+    }
+  }, [property, slug, navigate]);
+
+  const canonical = useMemo(() => {
+    if (property) {
+      const s = property.slug ? `/${property.slug}` : "";
+      return `https://camposbarrientos.com/properties/${property._id}${s}`;
+    }
+    if (typeof window !== "undefined") {
+      return `https://camposbarrientos.com${window.location.pathname}${window.location.search}`;
+    }
+    return undefined;
+  }, [property]);
 
   const description = useMemo(() => {
     if (!property) return undefined;

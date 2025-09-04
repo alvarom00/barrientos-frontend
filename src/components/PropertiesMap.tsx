@@ -32,7 +32,7 @@ export default function PropertiesMap() {
         // Trae varias; ajustá límite si es necesario
         const data = await api<any>("/properties", "GET", {
           auth: false,
-          query: { limit: 500, page: 1 },
+          query: { pageSize: 500, page: 1 },
         });
 
         // Normalizamos la forma de la respuesta:

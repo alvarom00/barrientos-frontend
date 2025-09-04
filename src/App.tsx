@@ -25,7 +25,7 @@ function App() {
           <Route element={<SiteLayout />}>
             {/* Public pages */}
             <Route path="/" element={<Home />} />
-            <Route path="/properties/:id" element={<PropertyDetail />} />
+            <Route path="/properties/:id/:slug?" element={<PropertyDetail />} />
             <Route path="/publicar" element={<Publicar />} />
             <Route path="/nosotros" element={<Nosotros />} />
 

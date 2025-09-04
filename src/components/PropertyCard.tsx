@@ -24,12 +24,16 @@ export interface IProperty {
   extras: string[];
 }
 
+function buildPropertyUrl(p: { _id: string; slug?: string }) {
+  return p.slug ? `/properties/${p._id}/${p.slug}` : `/properties/${p._id}`;
+}
+
 export default function PropertyCard({ property }: { property: IProperty }) {
   const firstImage = property.imageUrls?.find(Boolean);
 
   return (
     <Link
-      to={`/properties/${property._id}`}
+      to={buildPropertyUrl(property)}
       className="block group rounded-2xl overflow-hidden bg-crema-strong shadow-lg hover:scale-[1.03] transition-transform duration-300 border border-[#f2dbb1]"
       tabIndex={0}
     >
