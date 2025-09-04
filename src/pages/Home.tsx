@@ -61,7 +61,7 @@ export default function Home(): React.JSX.Element {
   return (
     <div className="mt-15 md:mt-15 flex flex-col items-center min-h-[60vh] gap-10">
       <Seo
-        title="Campos Barrientos — Campos en venta y arrendamiento"
+        title="Campos Barrientos"
         description="Compra, venta y arrendamiento de campos. Asesoramiento profesional y difusión en múltiples canales."
         canonical={canonical}
       />
