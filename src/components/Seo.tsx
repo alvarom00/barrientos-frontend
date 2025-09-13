@@ -6,7 +6,6 @@ type SeoProps = {
   canonical?: string;
   ogImage?: string;
   noindex?: boolean;
-  // Si querés pasar JSON-LD:
   structuredData?: Record<string, any> | string;
 };
 
@@ -45,7 +44,10 @@ export default function Seo({
     if (title) document.title = title;
 
     if (description) upsertMeta("name", "description", description);
-    if (noindex) upsertMeta("name", "robots", "noindex, nofollow");
+
+    // 👇 siempre seteamos robots para no heredar "noindex" de otra ruta
+    upsertMeta("name", "robots", noindex ? "noindex, nofollow" : "index, follow");
+
     if (canonical) upsertLink("canonical", canonical);
 
     // Open Graph / Twitter básicos
@@ -66,6 +68,7 @@ export default function Seo({
       upsertMeta("property", "og:url", canonical);
     }
     upsertMeta("property", "og:type", "website");
+    upsertMeta("property", "og:site_name", "Campos Barrientos");
 
     // JSON-LD
     let scriptEl: HTMLScriptElement | null = null;
@@ -79,9 +82,7 @@ export default function Seo({
     }
 
     return () => {
-      // opcional: restaurar título previo
       if (title) document.title = prevTitle;
-      // Nota: no removemos metas/links para evitar parpadeos si se reutiliza entre rutas.
       if (scriptEl) document.head.removeChild(scriptEl);
     };
   }, [title, description, canonical, ogImage, noindex, structuredData]);

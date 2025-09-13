@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Seo from "../components/Seo";
+import { getAssetUrl } from "../utils/getAssetUrl";
 
 interface IProperty {
   _id: string;
@@ -27,10 +28,10 @@ interface IProperty {
   bedrooms: number;
   bathrooms: number;
   condition: string;
-  houseMeasures: string[];
+  houseMeasures: string[] | any; // tu modelo a veces trae número, lo dejamos flexible
   services: string[];
   extras: string[];
-  slug?: string; // 👈 opcional, por compat
+  slug?: string;
 }
 
 const schema = yup.object().shape({
@@ -44,7 +45,7 @@ const schema = yup.object().shape({
 });
 
 export default function PropertyDetail() {
-  const { id, slug } = useParams<{ id: string; slug?: string }>(); // 👈 también leo slug
+  const { id, slug } = useParams<{ id: string; slug?: string }>();
   const navigate = useNavigate();
 
   const [property, setProperty] = useState<IProperty | null>(null);
@@ -82,7 +83,6 @@ export default function PropertyDetail() {
   useEffect(() => {
     setPropertyLoading(true);
     if (!id) return;
-    // El backend acepta id o slug, pero desde la lista venís con id. Mantengo id.
     fetch(`${API}/properties/${id}`)
       .then((res) => res.json())
       .then((data: IProperty) => {
@@ -92,7 +92,7 @@ export default function PropertyDetail() {
       .catch(() => setPropertyLoading(false));
   }, [id]);
 
-  // 👇 Canonical y redirección a /properties/:id/:slug si corresponde
+  // Redirección a /properties/:id/:slug si corresponde
   useEffect(() => {
     if (!property) return;
     if (property.slug && slug !== property.slug) {
@@ -119,6 +119,47 @@ export default function PropertyDetail() {
         : `${property.measure?.toLocaleString()} ha — ${property.location} — ${property.operationType}`;
     return base.length > 160 ? `${base.slice(0, 157)}…` : base;
   }, [property]);
+
+  const ogImage = useMemo(() => {
+    if (!property?.imageUrls?.length) return undefined;
+    return getAssetUrl(property.imageUrls[0]); // absoluta para OG
+  }, [property]);
+
+  const structuredData = useMemo(() => {
+    if (!property) return undefined;
+    const offer =
+      property.operationType === "Venta" && property.price
+        ? {
+            "@type": "Offer",
+            priceCurrency: "USD",
+            price: property.price,
+            availability: "https://schema.org/InStock",
+          }
+        : undefined;
+
+    const geo =
+      typeof property.lat === "number" && typeof property.lng === "number"
+        ? { "@type": "GeoCoordinates", latitude: property.lat, longitude: property.lng }
+        : undefined;
+
+    const extras: any[] = [
+      { "@type": "PropertyValue", name: "Hectáreas", value: property.measure },
+      { "@type": "PropertyValue", name: "Ubicación", value: property.location },
+    ];
+
+    return {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: property.title,
+      description,
+      image: ogImage ? [ogImage] : undefined,
+      url: canonical,
+      brand: { "@type": "Organization", name: "Campos Barrientos" },
+      offers: offer,
+      additionalProperty: extras,
+      geo,
+    };
+  }, [property, description, canonical, ogImage]);
 
   if (propertyLoading) {
     return <p className="p-8">Cargando propiedad…</p>;
@@ -168,6 +209,8 @@ export default function PropertyDetail() {
         title={`${property.title} — Campos Barrientos`}
         description={description}
         canonical={canonical}
+        ogImage={ogImage}
+        structuredData={structuredData}
       />
 
       <div className="bg-crema rounded-2xl shadow-xl p-4 sm:p-8 space-y-10 animate-fade-in border border-[#ebdbb9]">
