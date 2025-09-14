@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import PropertyCard from "../components/PropertyCard";
 import type { IProperty } from "../components/PropertyCard";
 import { motion } from "framer-motion";
+import Seo from "../components/Seo";
 import { api } from "../api";
 
 interface CamposProps {
@@ -63,9 +64,34 @@ export default function Campos({ operationType }: CamposProps) {
 
   const start = (currentPage - 1) * PAGE_SIZE + 1;
   const end = Math.min(currentPage * PAGE_SIZE, total);
+  const hasResults = total > 0;
+  const pageTitle =
+    operationType === "Venta"
+      ? "Campos en venta — Campos Barrientos"
+      : operationType === "Arrendamiento"
+      ? "Campos en alquiler/arrendamiento — Campos Barrientos"
+      : "Campos disponibles — Campos Barrientos";
+
+  const pageDescription =
+    operationType === "Arrendamiento"
+      ? "Listado de campos en alquiler/arrendamiento. Consultá disponibilidad, ubicación y hectáreas."
+      : operationType === "Venta"
+      ? "Listado de campos en venta: ubicación, hectáreas y precio. Contactanos para más info."
+      : "Todos los campos publicados: venta y arrendamiento. Ubicación, hectáreas y detalle.";
+
+  const canonical =
+    typeof window !== "undefined"
+      ? `https://camposbarrientos.com${window.location.pathname}`
+      : undefined;
 
   return (
     <div className="max-w-5xl mx-auto px-2 sm:px-4 py-8">
+      <Seo
+        title={pageTitle}
+        description={pageDescription}
+        canonical={canonical}
+        noindex={!hasResults}
+      />
       <div className="bg-crema rounded-2xl shadow-xl p-4 sm:p-8 animate-fade-in border border-[#ebdbb9]">
         <h1 className="text-3xl font-bold mb-6 drop-shadow">
           {operationType === "Venta"
