@@ -36,7 +36,10 @@ interface IProperty {
 
 const schema = yup.object().shape({
   nombre: yup.string().required("El nombre es obligatorio"),
-  email: yup.string().email("Email inválido").required("El email es obligatorio"),
+  email: yup
+    .string()
+    .email("Email inválido")
+    .required("El email es obligatorio"),
   telefono: yup
     .string()
     .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
@@ -96,7 +99,9 @@ export default function PropertyDetail() {
   useEffect(() => {
     if (!property) return;
     if (property.slug && slug !== property.slug) {
-      navigate(`/properties/${property._id}/${property.slug}`, { replace: true });
+      navigate(`/properties/${property._id}/${property.slug}`, {
+        replace: true,
+      });
     }
   }, [property, slug, navigate]);
 
@@ -116,7 +121,9 @@ export default function PropertyDetail() {
     const base =
       property.description && property.description.trim().length > 0
         ? property.description
-        : `${property.measure?.toLocaleString()} ha — ${property.location} — ${property.operationType}`;
+        : `${property.measure?.toLocaleString()} ha — ${property.location} — ${
+            property.operationType
+          }`;
     return base.length > 160 ? `${base.slice(0, 157)}…` : base;
   }, [property]);
 
@@ -127,6 +134,11 @@ export default function PropertyDetail() {
 
   const structuredData = useMemo(() => {
     if (!property) return undefined;
+
+    const keywords = (property as any).keywords?.length
+      ? (property as any).keywords.join(", ")
+      : undefined;
+
     const offer =
       property.operationType === "Venta" && property.price
         ? {
@@ -139,7 +151,11 @@ export default function PropertyDetail() {
 
     const geo =
       typeof property.lat === "number" && typeof property.lng === "number"
-        ? { "@type": "GeoCoordinates", latitude: property.lat, longitude: property.lng }
+        ? {
+            "@type": "GeoCoordinates",
+            latitude: property.lat,
+            longitude: property.lng,
+          }
         : undefined;
 
     const extras: any[] = [
@@ -158,6 +174,7 @@ export default function PropertyDetail() {
       offers: offer,
       additionalProperty: extras,
       geo,
+      keywords,
     };
   }, [property, description, canonical, ogImage]);
 
@@ -241,7 +258,10 @@ export default function PropertyDetail() {
         {/* GALERÍA */}
         <section className="w-full flex flex-col items-center">
           <div className="w-full max-w-2xl mx-auto bg-crema-strong rounded-xl shadow p-2">
-            <PropertyGallery images={property.imageUrls} videos={property.videoUrls} />
+            <PropertyGallery
+              images={property.imageUrls}
+              videos={property.videoUrls}
+            />
           </div>
         </section>
 
@@ -307,7 +327,9 @@ export default function PropertyDetail() {
           {property.extras?.includes("Vivienda") && (
             <>
               <div className="w-full bg-crema-strong rounded-xl p-5 font-normal shadow">
-                <h2 className="text-xl font-bold mb-2">Detalles de la vivienda</h2>
+                <h2 className="text-xl font-bold mb-2">
+                  Detalles de la vivienda
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   {property.houseMeasures && (
                     <div>
@@ -345,7 +367,10 @@ export default function PropertyDetail() {
               <h2 className="text-xl font-bold mb-2">Servicios</h2>
               <ul className="flex flex-wrap gap-2">
                 {property.services.filter(Boolean).map((serv, i) => (
-                  <li key={i} className="flex items-center bg-blue-800/10 rounded px-2 py-1">
+                  <li
+                    key={i}
+                    className="flex items-center bg-blue-800/10 rounded px-2 py-1"
+                  >
                     <Check className="w-4 h-4 text-blue-500 mr-1" />
                     {serv}
                   </li>
@@ -360,7 +385,10 @@ export default function PropertyDetail() {
               <h2 className="text-xl font-bold mb-2">Extras</h2>
               <ul className="flex flex-wrap gap-2">
                 {property.extras.filter(Boolean).map((ext, i) => (
-                  <li key={i} className="flex items-center bg-yellow-800/10 rounded px-2 py-1">
+                  <li
+                    key={i}
+                    className="flex items-center bg-yellow-800/10 rounded px-2 py-1"
+                  >
                     <Check className="w-4 h-4 text-red-700 mr-1" />
                     {ext}
                   </li>
@@ -386,7 +414,9 @@ export default function PropertyDetail() {
                 disabled={propertyLoading}
               />
               {errors.nombre && (
-                <p className="text-red-400 text-sm mt-1">{errors.nombre.message}</p>
+                <p className="text-red-400 text-sm mt-1">
+                  {errors.nombre.message}
+                </p>
               )}
             </div>
             <div>
@@ -397,7 +427,9 @@ export default function PropertyDetail() {
                 disabled={propertyLoading}
               />
               {errors.email && (
-                <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>
+                <p className="text-red-400 text-sm mt-1">
+                  {errors.email.message}
+                </p>
               )}
             </div>
             <div>
@@ -412,7 +444,9 @@ export default function PropertyDetail() {
                 }}
               />
               {errors.telefono && (
-                <p className="text-red-400 text-sm mt-1">{errors.telefono.message}</p>
+                <p className="text-red-400 text-sm mt-1">
+                  {errors.telefono.message}
+                </p>
               )}
             </div>
             <div>
@@ -424,7 +458,9 @@ export default function PropertyDetail() {
                 placeholder="Escribe tu mensaje"
               />
               {errors.mensaje && (
-                <p className="text-red-400 text-sm mt-1">{errors.mensaje.message}</p>
+                <p className="text-red-400 text-sm mt-1">
+                  {errors.mensaje.message}
+                </p>
               )}
             </div>
             <button
@@ -438,7 +474,9 @@ export default function PropertyDetail() {
             {msg && (
               <div
                 className={`mt-3 text-center font-semibold ${
-                  msg.includes("correctamente") ? "text-green-400" : "text-red-400"
+                  msg.includes("correctamente")
+                    ? "text-green-400"
+                    : "text-red-400"
                 }`}
               >
                 {msg}
