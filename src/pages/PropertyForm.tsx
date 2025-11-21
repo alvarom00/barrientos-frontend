@@ -273,11 +273,29 @@ export default function PropertyFormRH() {
   }, [hasVivienda, setValue, clearErrors, getValues]);
 
   // ---------- Handlers imágenes ----------
+  const MAX_IMAGES = 30;
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
+
     const files = Array.from(e.target.files);
 
     setImageFiles((prev) => {
+      const total = prev.length + files.length;
+
+      if (total > MAX_IMAGES) {
+        const allowed = MAX_IMAGES - prev.length;
+
+        alert(
+          allowed > 0
+            ? `Solo podés agregar ${allowed} imágenes más (máximo ${MAX_IMAGES}).`
+            : `Ya llegaste al límite máximo de ${MAX_IMAGES} imágenes.`
+        );
+
+        e.target.value = "";
+        return prev;
+      }
+
       const next = [...prev, ...files];
       setValue("imageFiles", next, { shouldValidate: true, shouldDirty: true });
       return next;
@@ -344,6 +362,11 @@ export default function PropertyFormRH() {
     const method = isEdit ? "PUT" : "POST";
 
     const headers: Record<string, string> = { "X-Idempotency-Key": nanoid(24) };
+
+    if (imageFiles.length + existingImages.length > MAX_IMAGES) {
+      alert(`Máximo permitido: ${MAX_IMAGES} imágenes.`);
+      return;
+    }
 
     try {
       await api(path, method, { body: fd, headers });
