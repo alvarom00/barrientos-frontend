@@ -278,27 +278,33 @@ export default function PropertyFormRH() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const files = Array.from(e.target.files);
+    const newFiles = Array.from(e.target.files);
 
-    setImageFiles((prev) => {
-      const total = prev.length + files.length;
+    // 🔍 Filtrar duplicados (Safari envía copias invisibles)
+    const filteredNew = newFiles.filter(
+      (file, index, arr) =>
+        arr.findIndex((f) => f.name === file.name && f.size === file.size) ===
+        index
+    );
 
-      if (total > MAX_IMAGES) {
-        const allowed = MAX_IMAGES - prev.length;
+    // 🔍 Combinar con los archivos existentes
+    const combined = [...imageFiles, ...filteredNew];
 
-        alert(
-          allowed > 0
-            ? `Solo podés agregar ${allowed} imágenes más (máximo ${MAX_IMAGES}).`
-            : `Ya llegaste al límite máximo de ${MAX_IMAGES} imágenes.`
-        );
+    // ⛔ Validación de límite
+    if (combined.length > MAX_IMAGES) {
+      alert(
+        `Solo podés subir un máximo de ${MAX_IMAGES} imágenes. Seleccionaste ${combined.length}.`
+      );
 
-        e.target.value = "";
-        return prev;
-      }
+      // ❗ NO agregamos nada si supera el límite
+      return;
+    }
 
-      const next = [...prev, ...files];
-      setValue("imageFiles", next, { shouldValidate: true, shouldDirty: true });
-      return next;
+    // ▶ Guardar si está OK
+    setImageFiles(combined);
+    setValue("imageFiles", combined, {
+      shouldValidate: true,
+      shouldDirty: true,
     });
   };
 
