@@ -49,7 +49,7 @@ export default function Navbar() {
           {/* Título solo DESKTOP */}
           <span
             className="hidden md:flex pl-6 text-2xl lg:text-4xl leading-tight gap-2"
-            style={{ fontFamily: "'PT Serif', serif" }}
+            style={{ fontFamily: "'Libre Baskerville', serif" }}
           >
             <span>CAMPOS</span>
             <span>BARRIENTOS</span>
@@ -63,7 +63,7 @@ export default function Navbar() {
             md:hidden absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2
             text-center text-lg font-bold leading-tight z-0
           "
-          style={{ color: LOGO_COLOR, textShadow: "0 1px 1px rgba(0,0,0,.45)", fontFamily: "'PT Serif', serif" }}
+          style={{ color: LOGO_COLOR, textShadow: "0 1px 1px rgba(0,0,0,.45)", fontFamily: "'Libre Baskerville', serif" }}
           aria-label="Ir al inicio"
         >
           <span className="block">CAMPOS</span>
