@@ -15,11 +15,19 @@ import {
   SERVICES,
   EXTRAS,
 } from "../components/CustomInputs";
+import { DndContext, closestCenter } from "@dnd-kit/core";
+
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
 import L from "leaflet";
 import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
 import { nanoid } from "nanoid";
 import { api, abortable } from "../api";
 import clsx from "clsx";
+import { SortableItem } from "../components/SortableItem";
 
 // ------- Tipos del formulario (explícitos para evitar choques Yup/RHF) ------
 type OperationType = "Venta" | "Arrendamiento" | "";
@@ -30,6 +38,13 @@ type ConditionType =
   | "Bueno"
   | "Regular"
   | "A refaccionar";
+
+type ImageItem = {
+  id: string;
+  url?: string;
+  file?: File;
+  publicId?: string;
+};
 
 type FormValues = {
   title: string;
@@ -50,6 +65,9 @@ type FormValues = {
   imageFiles?: File[];
   existingImagesUrls: string[];
 
+  imagesOrder?: any;
+  deletedImages?: string[];
+
   // videos
   videoUrls: (string | null)[] | null;
 
@@ -69,13 +87,10 @@ const OPERATION_TYPES: OperationType[] = ["Venta", "Arrendamiento", ""];
 
 // -------------------------- Componente --------------------------
 export default function PropertyFormRH() {
-  const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
 
   // forzar el resolver a nuestro tipo de FormValues
   const resolver = yupResolver(
-    propertySchema
+    propertySchema,
   ) as unknown as Resolver<FormValues>;
 
   const {
@@ -121,6 +136,8 @@ export default function PropertyFormRH() {
   const lat = watch("lat");
   const lng = watch("lng");
   const hasVivienda = extras.includes("Vivienda");
+  const [images, setImages] = useState<ImageItem[]>([]);
+  const [deletedImages, setDeletedImages] = useState<string[]>([]);
 
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
@@ -156,19 +173,6 @@ export default function PropertyFormRH() {
     ) : null;
   }
 
-  // ---------- Sincronizar campo del schema con el estado de previews ----------
-  // Cada vez que cambian las existentes -> actualizamos el field existingImagesUrls
-  useEffect(() => {
-    setValue("existingImagesUrls", existingImages, { shouldValidate: true });
-    trigger("imageFiles"); // revalida la regla "al menos 1 imagen"
-  }, [existingImages, setValue, trigger]);
-
-  useEffect(() => {
-    const urls = imageFiles.map((f) => URL.createObjectURL(f));
-    setPreviews(urls);
-    return () => urls.forEach((u) => URL.revokeObjectURL(u));
-  }, [imageFiles]);
-
   // ---------- Cargar datos al editar ----------
   useEffect(() => {
     if (!id) return;
@@ -177,7 +181,13 @@ export default function PropertyFormRH() {
     api
       .get<any>(`/properties/${id}`, { signal })
       .then((data) => {
-        setExistingImages(data.imageUrls || []);
+        const imgs = data.images.map((img: any) => ({
+          id: nanoid(),
+          url: img.url,
+          publicId: img.publicId,
+        }));
+
+        setImages(imgs);
 
         const hasVivienda =
           Array.isArray(data.extras) && data.extras.includes("Vivienda");
@@ -193,11 +203,11 @@ export default function PropertyFormRH() {
 
           // ---- CAMPOS DE VIVIENDA (ahora sí seteados/normalizados) ----
           environments: hasVivienda
-            ? data.environments ?? undefined
+            ? (data.environments ?? undefined)
             : undefined,
-          bedrooms: hasVivienda ? data.bedrooms ?? undefined : undefined,
-          bathrooms: hasVivienda ? data.bathrooms ?? undefined : undefined,
-          condition: hasVivienda ? data.condition ?? "" : undefined,
+          bedrooms: hasVivienda ? (data.bedrooms ?? undefined) : undefined,
+          bathrooms: hasVivienda ? (data.bathrooms ?? undefined) : undefined,
+          condition: hasVivienda ? (data.condition ?? "") : undefined,
 
           // 👇 antes no se seteaba
           environmentsList: hasVivienda
@@ -278,47 +288,12 @@ export default function PropertyFormRH() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
 
-    const newFiles = Array.from(e.target.files);
+    const newImgs = Array.from(e.target.files).map((file) => ({
+      id: nanoid(),
+      file,
+    }));
 
-    // 🔍 Filtrar duplicados (Safari envía copias invisibles)
-    const filteredNew = newFiles.filter(
-      (file, index, arr) =>
-        arr.findIndex((f) => f.name === file.name && f.size === file.size) ===
-        index
-    );
-
-    // 🔍 Combinar con los archivos existentes
-    const combined = [...imageFiles, ...filteredNew];
-
-    // ⛔ Validación de límite
-    if (combined.length > MAX_IMAGES) {
-      alert(
-        `Solo podés subir un máximo de ${MAX_IMAGES} imágenes. Seleccionaste ${combined.length}.`
-      );
-
-      // ❗ NO agregamos nada si supera el límite
-      return;
-    }
-
-    // ▶ Guardar si está OK
-    setImageFiles(combined);
-    setValue("imageFiles", combined, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setImageFiles((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      setValue("imageFiles", next, { shouldValidate: true, shouldDirty: true });
-      return next;
-    });
-  };
-
-  const handleRemoveExistingImage = (index: number) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
-    // existingImagesUrls se sincroniza en el useEffect de arriba
+    setImages((prev) => [...prev, ...newImgs]);
   };
 
   // ---------- Submit ----------
@@ -326,11 +301,16 @@ export default function PropertyFormRH() {
     if (isSubmitting) return;
 
     const fd = new FormData();
+
     const appendIf = (k: string, v: any) => {
-      if (v !== undefined && v !== null && v !== "") fd.append(k, String(v));
+      if (v !== undefined && v !== null && v !== "") {
+        fd.append(k, String(v));
+      }
     };
 
+    // -------------------------
     // Básicos
+    // -------------------------
     fd.append("title", data.title);
     fd.append("description", data.description);
     appendIf("price", data.price);
@@ -339,13 +319,20 @@ export default function PropertyFormRH() {
     appendIf("lat", data.lat);
     appendIf("lng", data.lng);
     fd.append("operationType", data.operationType);
-    if (data.propertyType) fd.append("propertyType", data.propertyType);
 
+    if (data.propertyType) {
+      fd.append("propertyType", data.propertyType);
+    }
+
+    // -------------------------
     // Arrays
+    // -------------------------
     (data.services ?? []).forEach((s) => appendIf("services[]", s));
     (data.extras ?? []).forEach((e) => appendIf("extras[]", e));
 
+    // -------------------------
     // Vivienda
+    // -------------------------
     if (data.extras?.includes("Vivienda")) {
       appendIf("environments", data.environments);
       appendIf("bedrooms", data.bedrooms);
@@ -354,22 +341,54 @@ export default function PropertyFormRH() {
       appendIf("houseMeasures", data.houseMeasures);
     }
 
-    // Imágenes
-    existingImages.forEach((url) => fd.append("keepImages", url));
-    imageFiles.forEach((file) => fd.append("images", file));
+    // =========================
+    // 🔥 IMÁGENES (NUEVO SISTEMA)
+    // =========================
 
+    // 1. ORDEN FINAL
+    const imagesOrder = images.map((img) => {
+      if (img.file) {
+        return { type: "new" };
+      }
+
+      return {
+        type: "existing",
+        publicId: img.publicId,
+      };
+    });
+
+    fd.append("imagesOrder", JSON.stringify(imagesOrder));
+
+    // 2. ARCHIVOS NUEVOS
+    images.forEach((img) => {
+      if (img.file) {
+        fd.append("images", img.file);
+      }
+    });
+
+    // 3. ELIMINADAS (Cloudinary)
+    fd.append("deletedImages", JSON.stringify(deletedImages));
+
+    // =========================
     // Videos
+    // =========================
     (data.videoUrls ?? [])
       .map((u) => (u ?? "").trim())
       .filter(Boolean)
       .forEach((u) => fd.append("videoUrls[]", u));
 
+    // -------------------------
+    // Request
+    // -------------------------
     const path = isEdit ? `/properties/${id}` : "/properties";
     const method = isEdit ? "PUT" : "POST";
 
-    const headers: Record<string, string> = { "X-Idempotency-Key": nanoid(24) };
+    const headers: Record<string, string> = {
+      "X-Idempotency-Key": nanoid(24),
+    };
 
-    if (imageFiles.length + existingImages.length > MAX_IMAGES) {
+    // 🔥 validación real ahora
+    if (images.length > MAX_IMAGES) {
       alert(`Máximo permitido: ${MAX_IMAGES} imágenes.`);
       return;
     }
@@ -568,46 +587,61 @@ export default function PropertyFormRH() {
             <input type="hidden" {...register("imageFiles")} />
             <input type="hidden" {...register("existingImagesUrls")} />
 
-            <div className="flex gap-2 mt-2 flex-wrap">
-              {/* existentes (DB / Cloudinary / ruta relativa) */}
-              {existingImages.map((url, i) => (
-                <div key={`exist-${i}`} className="relative w-24 h-16">
-                  <img
-                    src={buildImgUrl(url)}
-                    alt={`img-${i}`}
-                    className="w-full h-full object-cover rounded border border-[#ebdbb9] loading-lazy"
-                    loading="lazy"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveExistingImage(i)}
-                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                    title="Borrar imagen"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
 
-              {/* nuevas (File[]) usando previews */}
-              {previews.map((src, i) => (
-                <div key={`new-${i}`} className="relative w-24 h-16">
-                  <img
-                    src={src}
-                    alt={`new-${i}`}
-                    className="w-full h-full object-cover rounded border border-[#ebdbb9]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(i)}
-                    className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                    title="Borrar imagen"
-                  >
-                    ×
-                  </button>
+                const oldIndex = images.findIndex((i) => i.id === active.id);
+                const newIndex = images.findIndex((i) => i.id === over.id);
+
+                setImages(arrayMove(images, oldIndex, newIndex));
+              }}
+            >
+              <SortableContext
+                items={images.map((i) => i.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {images.map((img) => (
+                    <SortableItem key={img.id} id={img.id}>
+                      <div className="relative w-24 h-16">
+                        <img
+                          src={
+                            img.file
+                              ? URL.createObjectURL(img.file)
+                              : img.url
+                                ? buildImgUrl(img.url)
+                                : ""
+                          }
+                          className="w-full h-full object-cover rounded border border-[#ebdbb9]"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (img.publicId) {
+                              setDeletedImages((prev) => [
+                                ...prev,
+                                img.publicId as string,
+                              ]);
+                            }
+
+                            setImages((prev) =>
+                              prev.filter((i) => i.id !== img.id),
+                            );
+                          }}
+                          className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </SortableItem>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
 
             {(errors as any).imageFiles &&
               typeof (errors as any).imageFiles.message === "string" && (
@@ -633,7 +667,7 @@ export default function PropertyFormRH() {
                     placeholder="https://www.youtube.com/watch?v=XXXXXXXX"
                     onChange={(i, v) =>
                       field.onChange(
-                        items.map((x, ix) => (ix === i ? String(v ?? "") : x))
+                        items.map((x, ix) => (ix === i ? String(v ?? "") : x)),
                       )
                     }
                     onAdd={() => field.onChange([...items, ""])}
@@ -653,7 +687,7 @@ export default function PropertyFormRH() {
                           <p key={i} className="text-red-500 text-sm">
                             Video {i + 1}: {err?.message}
                           </p>
-                        )
+                        ),
                     )}
                 </div>
               );
@@ -670,7 +704,7 @@ export default function PropertyFormRH() {
                 <FeatureCheckboxGroup
                   options={SERVICES}
                   selected={(field.value ?? []).filter(
-                    (x): x is string => typeof x === "string"
+                    (x): x is string => typeof x === "string",
                   )}
                   onChange={field.onChange}
                 />
@@ -687,7 +721,7 @@ export default function PropertyFormRH() {
                 <FeatureCheckboxGroup
                   options={EXTRAS}
                   selected={(field.value ?? []).filter(
-                    (x): x is string => typeof x === "string"
+                    (x): x is string => typeof x === "string",
                   )}
                   onChange={field.onChange}
                 />
@@ -817,7 +851,7 @@ export default function PropertyFormRH() {
             className={clsx(
               "inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition",
               "bg-[#c7ae79] text-[#1b2328] hover:opacity-90 shadow",
-              isSubmitting && "opacity-60 cursor-not-allowed"
+              isSubmitting && "opacity-60 cursor-not-allowed",
             )}
           >
             {isSubmitting ? "Guardando..." : "Guardar propiedad"}
