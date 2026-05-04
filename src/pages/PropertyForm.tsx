@@ -87,7 +87,6 @@ const OPERATION_TYPES: OperationType[] = ["Venta", "Arrendamiento", ""];
 
 // -------------------------- Componente --------------------------
 export default function PropertyFormRH() {
-
   // forzar el resolver a nuestro tipo de FormValues
   const resolver = yupResolver(
     propertySchema,
@@ -138,6 +137,15 @@ export default function PropertyFormRH() {
   const hasVivienda = extras.includes("Vivienda");
   const [images, setImages] = useState<ImageItem[]>([]);
   const [deletedImages, setDeletedImages] = useState<string[]>([]);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [aiAlternatives, setAiAlternatives] = useState<string[]>([]);
+  const [originalDescription, setOriginalDescription] = useState<string>("");
+  const [loadingAI, setLoadingAI] = useState(false);
+  const description = watch("description");
+  const title = watch("title");
+  const location = watch("location");
+  const measure = watch("measure");
+  const operationType = watch("operationType");
 
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
@@ -281,6 +289,40 @@ export default function PropertyFormRH() {
         setValue("houseMeasures", null, { shouldDirty: true });
     }
   }, [hasVivienda, setValue, clearErrors, getValues]);
+
+  const handleImproveWithAI = async () => {
+    setLoadingAI(true);
+
+    try {
+      if (!originalDescription) {
+        setOriginalDescription(description);
+      }
+
+      const res = await fetch("/api/ai/optimize-description", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          location,
+          measure,
+          operationType,
+          previousSuggestions: aiAlternatives,
+        }),
+      });
+
+      const data = await res.json();
+
+      setAiSuggestion(data.optimized);
+      setAiAlternatives(data.alternatives);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingAI(false);
+    }
+  };
 
   // ---------- Handlers imágenes ----------
   const MAX_IMAGES = 30;
@@ -434,16 +476,88 @@ export default function PropertyFormRH() {
           {/* Descripción */}
           <div>
             <label className="block font-semibold mb-1">Descripción</label>
+
             <textarea
               {...register("description")}
               rows={3}
               placeholder="Descripción"
               className="w-full p-2 border rounded bg-[#fcf7ea]/90 placeholder:text-[#a69468] resize-none focus:outline-primary focus:border-[#ffe8ad] transition"
             />
+
             {errors.description && (
               <p className="text-red-500 text-sm mt-1">
                 {errors.description.message as string}
               </p>
+            )}
+
+            {/* 🔥 BOTÓN IA */}
+            <button
+              type="button"
+              onClick={handleImproveWithAI}
+              disabled={loadingAI}
+              className="mt-2 px-3 py-1 bg-black text-white rounded hover:bg-gray-800 transition"
+            >
+              {loadingAI ? "Generando..." : "Mejorar con IA"}
+            </button>
+
+            {/* 🧠 SUGERENCIA PRINCIPAL */}
+            {aiSuggestion && (
+              <div className="mt-4 p-3 border rounded bg-[#f9f9f9] shadow-sm">
+                <h4 className="font-semibold mb-2">Sugerencia IA</h4>
+
+                <p className="whitespace-pre-line text-sm">{aiSuggestion}</p>
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setValue("description", aiSuggestion)}
+                    className="px-2 py-1 bg-green-600 text-white rounded text-sm"
+                  >
+                    Usar esta
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleImproveWithAI}
+                    className="px-2 py-1 bg-blue-600 text-white rounded text-sm"
+                  >
+                    Probar otra
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue("description", originalDescription);
+                      setAiSuggestion(null);
+                      setAiAlternatives([]);
+                    }}
+                    className="px-2 py-1 bg-gray-500 text-white rounded text-sm"
+                  >
+                    Volver al original
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 🔄 ALTERNATIVAS */}
+            {aiAlternatives.length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Otras opciones</h4>
+
+                {aiAlternatives.map((alt, i) => (
+                  <div key={i} className="mb-2 p-2 border rounded bg-[#f9f9f9]">
+                    <p className="whitespace-pre-line text-sm">{alt}</p>
+
+                    <button
+                      type="button"
+                      onClick={() => setValue("description", alt)}
+                      className="mt-2 px-2 py-1 bg-black text-white rounded text-sm"
+                    >
+                      Usar esta
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
