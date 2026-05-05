@@ -17,6 +17,7 @@ import {
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -32,7 +33,7 @@ import { useMapEvents, Marker, MapContainer, TileLayer } from "react-leaflet";
 import { nanoid } from "nanoid";
 import { api, abortable } from "../api";
 import clsx from "clsx";
-import { SortableItem } from "../components/SortableItem";
+import SortableItem from "../components/SortableItem";
 
 // ------- Tipos del formulario (explícitos para evitar choques Yup/RHF) ------
 type OperationType = "Venta" | "Arrendamiento" | "";
@@ -183,6 +184,12 @@ export default function PropertyFormRH() {
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 8,
       },
     }),
   );
@@ -728,42 +735,55 @@ export default function PropertyFormRH() {
                 <div className="flex gap-2 mt-2 flex-wrap">
                   {images.map((img) => (
                     <SortableItem key={img.id} id={img.id}>
-                      <div className="relative w-24 h-16">
-                        <img
-                          src={
-                            img.file
-                              ? URL.createObjectURL(img.file)
-                              : img.url
-                                ? buildImgUrl(img.url)
-                                : ""
-                          }
-                          className="w-full h-full object-cover rounded border border-[#ebdbb9]"
-                        />
+                      {({ listeners }: any) => (
+                        <div className="relative w-24 h-16">
+                          <img
+                            src={
+                              img.file
+                                ? URL.createObjectURL(img.file)
+                                : img.url
+                                  ? buildImgUrl(img.url)
+                                  : ""
+                            }
+                            className="w-full h-full object-cover rounded border border-[#ebdbb9]"
+                          />
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setImages((prev) => {
-                              const imgToDelete = prev.find(
-                                (i) => i.id === img.id,
-                              );
+                          {/* 🔥 HANDLE GRANDE */}
+                          <div
+                            {...listeners}
+                            style={{ touchAction: "none" }}
+                            className="absolute bottom-0 left-0 w-full h-6 bg-black/40 flex items-center justify-center cursor-grab"
+                          >
+                            <span className="text-white text-xs">
+                              Arrastrar
+                            </span>
+                          </div>
 
-                              if (imgToDelete?.publicId) {
-                                setDeletedImages((d) => [
-                                  ...d,
-                                  imgToDelete.publicId!,
-                                ]);
-                              }
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImages((prev) => {
+                                const imgToDelete = prev.find(
+                                  (i) => i.id === img.id,
+                                );
 
-                              return prev.filter((i) => i.id !== img.id);
-                            });
-                          }}
-                          className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                        >
-                          ×
-                        </button>
-                      </div>
+                                if (imgToDelete?.publicId) {
+                                  setDeletedImages((d) => [
+                                    ...d,
+                                    imgToDelete.publicId!,
+                                  ]);
+                                }
+
+                                return prev.filter((i) => i.id !== img.id);
+                              });
+                            }}
+                            className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
                     </SortableItem>
                   ))}
                 </div>
