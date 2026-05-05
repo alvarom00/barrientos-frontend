@@ -139,15 +139,16 @@ export default function PropertyDetail() {
       ? (property as any).keywords.join(", ")
       : undefined;
 
-    const offer =
-      property.operationType === "Venta" && property.price
-        ? {
-            "@type": "Offer",
-            priceCurrency: "USD",
-            price: property.price,
-            availability: "https://schema.org/InStock",
-          }
-        : undefined;
+    const offer = {
+      "@type": "Offer",
+      price:
+        property.operationType === "Venta" && property.price
+          ? property.price
+          : "0",
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock",
+      url: canonical,
+    };
 
     const geo =
       typeof property.lat === "number" && typeof property.lng === "number"
@@ -246,8 +247,8 @@ export default function PropertyDetail() {
               {property.operationType === "Arrendamiento"
                 ? "Precio a acordar"
                 : property.price
-                ? `U$S ${property.price.toLocaleString()}`
-                : "Sin precio"}
+                  ? `U$S ${property.price.toLocaleString()}`
+                  : "Sin precio"}
             </span>
             <span className="inline-block bg-primary/10 text-primary px-3 py-1 rounded text-sm font-semibold mt-2">
               {property.operationType}
