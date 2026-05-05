@@ -1,4 +1,3 @@
-// src/pages/PropertyForm.tsx
 import { useEffect, useState } from "react";
 import {
   useForm,
@@ -146,7 +145,7 @@ export default function PropertyFormRH() {
   const location = watch("location");
   const measure = watch("measure");
   const operationType = watch("operationType");
-
+  const API = import.meta.env.VITE_API_URL;
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
   const buildImgUrl = (u: string) => {
@@ -298,7 +297,7 @@ export default function PropertyFormRH() {
         setOriginalDescription(description);
       }
 
-      const res = await fetch("/api/ai/optimize-description", {
+      const res = await fetch(`${API}/api/ai/optimize-description`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -312,6 +311,14 @@ export default function PropertyFormRH() {
           previousSuggestions: aiAlternatives,
         }),
       });
+
+      console.log("STATUS:", res.status);
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ API ERROR:", text);
+        throw new Error("Error en IA");
+      }
 
       const data = await res.json();
 
