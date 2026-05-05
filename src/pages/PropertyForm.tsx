@@ -60,10 +60,6 @@ type FormValues = {
 
   measure: number | undefined;
 
-  // imágenes nuevas (File[]) + existentes (urls) para la validación
-  imageFiles?: File[];
-  existingImagesUrls: string[];
-
   imagesOrder?: any;
   deletedImages?: string[];
 
@@ -116,9 +112,6 @@ export default function PropertyFormRH() {
       lat: undefined,
       lng: undefined,
       measure: undefined,
-
-      imageFiles: [],
-      existingImagesUrls: [],
 
       videoUrls: [""],
       services: [],
@@ -240,16 +233,12 @@ export default function PropertyFormRH() {
           extras: Array.isArray(data.extras) ? data.extras : [],
 
           operationType: data.operationType ?? "",
-          imageFiles: [],
 
           // si lo usás para la validación de imágenes
           existingImagesUrls: Array.isArray(data.imageUrls)
             ? data.imageUrls
             : [],
         });
-
-        // revalidar imágenes después del reset
-        setTimeout(() => trigger(["imageFiles"]), 0);
       })
       .catch((err) => {
         if ((err as any)?.name !== "AbortError")
@@ -297,7 +286,7 @@ export default function PropertyFormRH() {
         setOriginalDescription(description);
       }
 
-      const res = await fetch(`${API}/api/ai/optimize-description`, {
+      const res = await fetch(`${API}/ai/optimize-description`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -335,14 +324,17 @@ export default function PropertyFormRH() {
   const MAX_IMAGES = 30;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
+    const files = e.target.files;
+    if (!files) return;
 
-    const newImgs = Array.from(e.target.files).map((file) => ({
+    const newImages = Array.from(files).map((file) => ({
       id: nanoid(),
       file,
     }));
 
-    setImages((prev) => [...prev, ...newImgs]);
+    setImages((prev) => [...prev, ...newImages]);
+
+    e.target.value = "";
   };
 
   // ---------- Submit ----------
@@ -704,10 +696,6 @@ export default function PropertyFormRH() {
               className="w-full p-2 border rounded bg-[#fcf7ea]/90"
             />
 
-            {/* registrar fields presentes en el schema */}
-            <input type="hidden" {...register("imageFiles")} />
-            <input type="hidden" {...register("existingImagesUrls")} />
-
             <DndContext
               collisionDetection={closestCenter}
               onDragEnd={(event) => {
@@ -742,16 +730,20 @@ export default function PropertyFormRH() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (img.publicId) {
-                              setDeletedImages((prev) => [
-                                ...prev,
-                                img.publicId as string,
-                              ]);
-                            }
+                            setImages((prev) => {
+                              const imgToDelete = prev.find(
+                                (i) => i.id === img.id,
+                              );
 
-                            setImages((prev) =>
-                              prev.filter((i) => i.id !== img.id),
-                            );
+                              if (imgToDelete?.publicId) {
+                                setDeletedImages((d) => [
+                                  ...d,
+                                  imgToDelete.publicId!,
+                                ]);
+                              }
+
+                              return prev.filter((i) => i.id !== img.id);
+                            });
                           }}
                           className="absolute top-0 right-0 btn-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                         >
@@ -763,13 +755,6 @@ export default function PropertyFormRH() {
                 </div>
               </SortableContext>
             </DndContext>
-
-            {(errors as any).imageFiles &&
-              typeof (errors as any).imageFiles.message === "string" && (
-                <p className="text-red-500 text-sm mt-1">
-                  {(errors as any).imageFiles.message}
-                </p>
-              )}
           </div>
 
           {/* 🎥 Videos por URL */}

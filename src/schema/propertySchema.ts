@@ -46,7 +46,10 @@ export const propertySchema = yup
     // Precio: requerido solamente en Venta
     price: yup
       .number()
-      .transform((v, o) => (o === "" || o === undefined ? null : v))
+      .transform((v, o) => {
+        if (o === "" || o === undefined || isNaN(v)) return null;
+        return v;
+      })
       .when("operationType", {
         is: "Venta",
         then: (s) =>
@@ -84,15 +87,19 @@ export const propertySchema = yup
     // Regla: debe haber al menos 1 entre nuevas (imageFiles) o existentes (existingImagesUrls)
     imageFiles: yup
       .mixed()
-      .test("at-least-one", "Debes subir al menos una imagen.", function (value) {
-        const { existingImagesUrls = [] } = (this.parent || {}) as {
-          existingImagesUrls?: unknown[];
-        };
-        const hasNew = Array.isArray(value) && value.length > 0;
-        const hasExisting =
-          Array.isArray(existingImagesUrls) && existingImagesUrls.length > 0;
-        return hasNew || hasExisting;
-      }),
+      .test(
+        "at-least-one",
+        "Debes subir al menos una imagen.",
+        function (value) {
+          const { existingImagesUrls = [] } = (this.parent || {}) as {
+            existingImagesUrls?: unknown[];
+          };
+          const hasNew = Array.isArray(value) && value.length > 0;
+          const hasExisting =
+            Array.isArray(existingImagesUrls) && existingImagesUrls.length > 0;
+          return hasNew || hasExisting;
+        },
+      ),
 
     // Lista de URLs ya guardadas (se sincroniza en el form)
     existingImagesUrls: yup.array(yup.string()).default([]),
@@ -104,11 +111,13 @@ export const propertySchema = yup
           .string()
           .nullable()
           .test("is-url", "Ingrese una URL válida (http/https)", (v) =>
-            isValidUrl(v ?? undefined)
-          )
+            isValidUrl(v ?? undefined),
+          ),
       )
       .nullable()
-      .transform((_val, orig) => (Array.isArray(orig) ? orig : orig ? [orig] : [""])),
+      .transform((_val, orig) =>
+        Array.isArray(orig) ? orig : orig ? [orig] : [""],
+      ),
 
     // Servicios / Extras
     services: yup.array(yup.string()).default([]),
@@ -157,16 +166,14 @@ export const propertySchema = yup
         otherwise: (s) => s.notRequired().nullable(),
       }),
 
-    condition: yup
-      .string()
-      .when("extras", {
-        is: (extras: string[] = []) => extras.includes("Vivienda"),
-        then: (s) =>
-          s
-            .oneOf([...CONDITION_OPTIONS], "Estado inválido")
-            .required("Condición requerida"),
-        otherwise: (s) => s.notRequired(),
-      }),
+    condition: yup.string().when("extras", {
+      is: (extras: string[] = []) => extras.includes("Vivienda"),
+      then: (s) =>
+        s
+          .oneOf([...CONDITION_OPTIONS], "Estado inválido")
+          .required("Condición requerida"),
+      otherwise: (s) => s.notRequired(),
+    }),
 
     houseMeasures: yup
       .number()
