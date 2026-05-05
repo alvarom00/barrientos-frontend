@@ -83,27 +83,6 @@ export const propertySchema = yup
       .positive("El número debe ser mayor a 0.")
       .required("Las hectáreas son obligatorias."),
 
-    // Imágenes (nuevas) + existentes
-    // Regla: debe haber al menos 1 entre nuevas (imageFiles) o existentes (existingImagesUrls)
-    imageFiles: yup
-      .mixed()
-      .test(
-        "at-least-one",
-        "Debes subir al menos una imagen.",
-        function (value) {
-          const { existingImagesUrls = [] } = (this.parent || {}) as {
-            existingImagesUrls?: unknown[];
-          };
-          const hasNew = Array.isArray(value) && value.length > 0;
-          const hasExisting =
-            Array.isArray(existingImagesUrls) && existingImagesUrls.length > 0;
-          return hasNew || hasExisting;
-        },
-      ),
-
-    // Lista de URLs ya guardadas (se sincroniza en el form)
-    existingImagesUrls: yup.array(yup.string()).default([]),
-
     // Videos por URL
     videoUrls: yup
       .array(

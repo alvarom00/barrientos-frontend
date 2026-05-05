@@ -14,7 +14,13 @@ import {
   SERVICES,
   EXTRAS,
 } from "../components/CustomInputs";
-import { DndContext, closestCenter } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 
 import {
   SortableContext,
@@ -172,6 +178,14 @@ export default function PropertyFormRH() {
       />
     ) : null;
   }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
 
   // ---------- Cargar datos al editar ----------
   useEffect(() => {
@@ -341,6 +355,17 @@ export default function PropertyFormRH() {
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     if (isSubmitting) return;
 
+    // ✅ VALIDACIÓN REAL (antes de armar el FormData)
+    if (images.length === 0) {
+      alert("Debes subir al menos una imagen.");
+      return;
+    }
+
+    if (images.length > MAX_IMAGES) {
+      alert(`Máximo permitido: ${MAX_IMAGES} imágenes.`);
+      return;
+    }
+
     const fd = new FormData();
 
     const appendIf = (k: string, v: any) => {
@@ -383,36 +408,29 @@ export default function PropertyFormRH() {
     }
 
     // =========================
-    // 🔥 IMÁGENES (NUEVO SISTEMA)
+    // 🔥 IMÁGENES (correcto)
     // =========================
 
-    // 1. ORDEN FINAL
-    const imagesOrder = images.map((img) => {
-      if (img.file) {
-        return { type: "new" };
-      }
-
-      return {
-        type: "existing",
-        publicId: img.publicId,
-      };
-    });
+    // 1. Orden final (CRÍTICO para backend)
+    const imagesOrder = images.map((img) =>
+      img.file ? { type: "new" } : { type: "existing", publicId: img.publicId },
+    );
 
     fd.append("imagesOrder", JSON.stringify(imagesOrder));
 
-    // 2. ARCHIVOS NUEVOS
+    // 2. Archivos nuevos
     images.forEach((img) => {
       if (img.file) {
         fd.append("images", img.file);
       }
     });
 
-    // 3. ELIMINADAS (Cloudinary)
+    // 3. Eliminadas
     fd.append("deletedImages", JSON.stringify(deletedImages));
 
-    // =========================
+    // -------------------------
     // Videos
-    // =========================
+    // -------------------------
     (data.videoUrls ?? [])
       .map((u) => (u ?? "").trim())
       .filter(Boolean)
@@ -427,12 +445,6 @@ export default function PropertyFormRH() {
     const headers: Record<string, string> = {
       "X-Idempotency-Key": nanoid(24),
     };
-
-    // 🔥 validación real ahora
-    if (images.length > MAX_IMAGES) {
-      alert(`Máximo permitido: ${MAX_IMAGES} imágenes.`);
-      return;
-    }
 
     try {
       await api(path, method, { body: fd, headers });
@@ -697,6 +709,7 @@ export default function PropertyFormRH() {
             />
 
             <DndContext
+              sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={(event) => {
                 const { active, over } = event;
@@ -729,7 +742,8 @@ export default function PropertyFormRH() {
 
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setImages((prev) => {
                               const imgToDelete = prev.find(
                                 (i) => i.id === img.id,
