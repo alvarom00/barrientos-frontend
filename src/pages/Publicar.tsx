@@ -3,6 +3,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useState } from "react";
 import Seo from "../components/Seo";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 const schema = yup.object().shape({
   nombre: yup.string().required("El nombre y apellido es obligatorio"),
@@ -28,7 +29,7 @@ const schema = yup.object().shape({
     .string()
     .oneOf(
       ["Agricola", "Ganadero", "Mixto", "Turistico / Recreativo", "Otro"],
-      "Seleccione un tipo de campo"
+      "Seleccione un tipo de campo",
     )
     .required("Este campo es obligatorio"),
   precio: yup
@@ -64,6 +65,7 @@ export default function Publicar() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState("");
   const API = import.meta.env.VITE_API_URL;
 
   const canonical =
@@ -76,15 +78,23 @@ export default function Publicar() {
     setSuccess(null);
     setError(null);
     setLoading(true);
+    if (!captchaToken) {
+      setError("Verificá el captcha.");
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${API}/publicar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          captchaToken,
+        }),
       });
       if (!res.ok) throw new Error("No se pudo enviar el formulario");
       setSuccess(
-        "¡Formulario enviado correctamente! Pronto nos pondremos en contacto."
+        "¡Formulario enviado correctamente! Pronto nos pondremos en contacto.",
       );
       reset();
     } catch (e) {
@@ -113,7 +123,10 @@ export default function Publicar() {
           PUBLICAR MI CAMPO
         </h1>
 
-        <span className="block mb-3" style={{ fontFamily: "'PT Serif', serif" }}>
+        <span
+          className="block mb-3"
+          style={{ fontFamily: "'PT Serif', serif" }}
+        >
           Completá el siguiente formulario y nos pondremos en contacto con vos.
         </span>
 
@@ -214,7 +227,8 @@ export default function Publicar() {
         {/* Superficie total */}
         <div>
           <label className="block font-semibold mb-1">
-            Superficie total (en hectáreas) <span className="text-red-500">*</span>
+            Superficie total (en hectáreas){" "}
+            <span className="text-red-500">*</span>
           </label>
           <input
             {...register("superficie")}
@@ -244,7 +258,9 @@ export default function Publicar() {
             <option value="Agricola">Agricola</option>
             <option value="Ganadero">Ganadero</option>
             <option value="Mixto">Mixto</option>
-            <option value="Turistico / Recreativo">Turístico / Recreativo</option>
+            <option value="Turistico / Recreativo">
+              Turístico / Recreativo
+            </option>
             <option value="Otro">Otro</option>
           </select>
           {errors.tipoCampo && (
@@ -291,7 +307,8 @@ export default function Publicar() {
         {/* ¿Tenés escritura o documentación lista? */}
         <div>
           <label className="block font-semibold mb-1">
-            ¿Tenés escritura o documentación lista? <span className="text-red-500">*</span>
+            ¿Tenés escritura o documentación lista?{" "}
+            <span className="text-red-500">*</span>
           </label>
           <select
             {...register("documentacion")}
@@ -342,6 +359,13 @@ export default function Publicar() {
             className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] resize-none"
             rows={3}
             placeholder="Opcional"
+          />
+        </div>
+
+        <div className="mt-3 flex justify-center">
+          <Turnstile
+            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+            onSuccess={(token) => setCaptchaToken(token)}
           />
         </div>
 

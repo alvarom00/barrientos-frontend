@@ -10,6 +10,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Seo from "../components/Seo";
 import { getAssetUrl } from "../utils/getAssetUrl";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 interface IProperty {
   _id: string;
@@ -55,6 +56,7 @@ export default function PropertyDetail() {
   const [propertyLoading, setPropertyLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState("");
   const API = import.meta.env.VITE_API_URL;
 
   const {
@@ -190,6 +192,11 @@ export default function PropertyDetail() {
   async function onSubmit(data: any) {
     setMsg(null);
     setFormLoading(true);
+    if (!captchaToken) {
+      setMsg("Verificá el captcha.");
+      setFormLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${API}/contact-property`, {
         method: "POST",
@@ -199,6 +206,7 @@ export default function PropertyDetail() {
           ref: property?.ref,
           titulo: property?.title,
           url: window.location.href,
+          captchaToken,
         }),
       });
       if (res.ok) {
@@ -463,6 +471,12 @@ export default function PropertyDetail() {
                   {errors.mensaje.message}
                 </p>
               )}
+            </div>
+            <div className="mt-3 flex justify-center">
+              <Turnstile
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                onSuccess={(token) => setCaptchaToken(token)}
+              />
             </div>
             <button
               type="submit"
