@@ -46,6 +46,7 @@ const schema = yup.object().shape({
     .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
     .required("El teléfono es obligatorio"),
   mensaje: yup.string().required("El mensaje es obligatorio"),
+  website: yup.string().url("Ingrese una URL válida").optional(),
 });
 
 export default function PropertyDetail() {
@@ -71,6 +72,7 @@ export default function PropertyDetail() {
       email: "",
       telefono: "",
       mensaje: "",
+      website: "",
     },
   });
 
@@ -476,6 +478,14 @@ export default function PropertyDetail() {
               <Turnstile
                 siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                 onSuccess={(token) => setCaptchaToken(token)}
+              />
+            </div>
+            <div className="absolute left-[-9999px] top-[-9999px] opacity-0 pointer-events-none">
+              <input
+                type="text"
+                autoComplete="off"
+                tabIndex={-1}
+                {...register("website")}
               />
             </div>
             <button

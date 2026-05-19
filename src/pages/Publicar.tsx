@@ -48,6 +48,7 @@ const schema = yup.object().shape({
     .matches(/^\d{6,}$/, "Ingrese un número de teléfono válido")
     .required("El teléfono es obligatorio"),
   comentarios: yup.string(),
+  website: yup.string().url("Ingrese una URL válida").optional(),
 });
 
 export default function Publicar() {
@@ -366,6 +367,15 @@ export default function Publicar() {
           <Turnstile
             siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
             onSuccess={(token) => setCaptchaToken(token)}
+          />
+        </div>
+
+        <div className="absolute left-[-9999px] top-[-9999px] opacity-0 pointer-events-none">
+          <input
+            type="text"
+            autoComplete="off"
+            tabIndex={-1}
+            {...register("website")}
           />
         </div>
 
