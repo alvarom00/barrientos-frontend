@@ -11,9 +11,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   DynamicList,
   FeatureCheckboxGroup,
-  SERVICES,
-  EXTRAS,
 } from "../components/CustomInputs";
+import { EXTRAS, SERVICES } from "../constants/propertyOptions";
 import {
   DndContext,
   PointerSensor,
@@ -52,6 +51,17 @@ type ImageItem = {
   publicId?: string;
 };
 
+type PropertyImage = {
+  url: string;
+  publicId: string;
+};
+
+type PropertyApiResponse = Partial<FormValues> & {
+  images: PropertyImage[];
+  imageUrls?: string[];
+  environmentsList?: unknown[];
+};
+
 type FormValues = {
   title: string;
   description: string;
@@ -67,8 +77,9 @@ type FormValues = {
 
   measure: number | undefined;
 
-  imagesOrder?: any;
+  imagesOrder?: unknown;
   deletedImages?: string[];
+  existingImagesUrls?: string[];
 
   // videos
   videoUrls: (string | null)[] | null;
@@ -86,6 +97,21 @@ type FormValues = {
 };
 
 const OPERATION_TYPES: OperationType[] = ["Venta", "Arrendamiento", ""];
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function getErrorMessage(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+      ? error.message
+      : undefined
+  );
+}
 
 // -------------------------- Componente --------------------------
 export default function PropertyFormRH() {
@@ -145,7 +171,6 @@ export default function PropertyFormRH() {
   const location = watch("location");
   const measure = watch("measure");
   const operationType = watch("operationType");
-  const API = import.meta.env.VITE_API_URL;
   const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
   const buildImgUrl = (u: string) => {
@@ -200,9 +225,9 @@ export default function PropertyFormRH() {
     const { signal, abort } = abortable();
 
     api
-      .get<any>(`/properties/${id}`, { signal })
+      .get<PropertyApiResponse>(`/properties/${id}`, { signal })
       .then((data) => {
-        const imgs = data.images.map((img: any) => ({
+        const imgs = data.images.map((img) => ({
           id: nanoid(),
           url: img.url,
           publicId: img.publicId,
@@ -231,13 +256,6 @@ export default function PropertyFormRH() {
           condition: hasVivienda ? (data.condition ?? "") : undefined,
 
           // 👇 antes no se seteaba
-          environmentsList: hasVivienda
-            ? Array.isArray(data.environmentsList) &&
-              data.environmentsList.length
-              ? data.environmentsList.map((s: any) => String(s ?? ""))
-              : [""]
-            : undefined,
-
           houseMeasures: hasVivienda
             ? data.houseMeasures === 0 || data.houseMeasures
               ? Number(data.houseMeasures)
@@ -261,8 +279,8 @@ export default function PropertyFormRH() {
             : [],
         });
       })
-      .catch((err) => {
-        if ((err as any)?.name !== "AbortError")
+      .catch((err: unknown) => {
+        if (!isAbortError(err))
           console.error("Error cargando propiedad:", err);
       });
 
@@ -307,33 +325,22 @@ export default function PropertyFormRH() {
         setOriginalDescription(description);
       }
 
-      const res = await fetch(`${API}/ai/optimize-description`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const data = await api<{
+        optimized: string;
+        alternatives?: string[];
+      }>("/ai/optimize-description", "POST", {
+        body: {
           title,
           description,
           location,
           measure,
           operationType,
           previousSuggestions: aiAlternatives,
-        }),
+        },
       });
 
-      console.log("STATUS:", res.status);
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("❌ API ERROR:", text);
-        throw new Error("Error en IA");
-      }
-
-      const data = await res.json();
-
       setAiSuggestion(data.optimized);
-      setAiAlternatives(data.alternatives);
+      setAiAlternatives(data.alternatives ?? []);
     } catch (error) {
       console.error(error);
     } finally {
@@ -375,7 +382,7 @@ export default function PropertyFormRH() {
 
     const fd = new FormData();
 
-    const appendIf = (k: string, v: any) => {
+    const appendIf = (k: string, v: unknown) => {
       if (v !== undefined && v !== null && v !== "") {
         fd.append(k, String(v));
       }
@@ -456,8 +463,8 @@ export default function PropertyFormRH() {
     try {
       await api(path, method, { body: fd, headers });
       navigate("/admin/dashboard");
-    } catch (err: any) {
-      alert("Error al guardar la propiedad: " + (err?.message || err));
+    } catch (err: unknown) {
+      alert("Error al guardar la propiedad: " + (getErrorMessage(err) || String(err)));
       throw err;
     }
   };
@@ -700,7 +707,7 @@ export default function PropertyFormRH() {
               />
             </div>
             <p className="text-red-500 text-sm mt-1">
-              {(errors as any).lat?.message || (errors as any).lng?.message}
+              {errors.lat?.message || errors.lng?.message}
             </p>
           </div>
 
@@ -735,7 +742,7 @@ export default function PropertyFormRH() {
                 <div className="flex gap-2 mt-2 flex-wrap">
                   {images.map((img) => (
                     <SortableItem key={img.id} id={img.id}>
-                      {({ listeners }: any) => (
+                      {({ listeners }) => (
                         <div className="relative w-24 h-16">
                           <img
                             src={
@@ -815,17 +822,17 @@ export default function PropertyFormRH() {
                       field.onChange(items.filter((_, ix) => ix !== i))
                     }
                   />
-                  {(errors as any).videoUrls?.message && (
+                  {getErrorMessage(errors.videoUrls) && (
                     <p className="text-red-500 text-sm mt-1">
-                      {(errors as any).videoUrls.message}
+                      {getErrorMessage(errors.videoUrls)}
                     </p>
                   )}
-                  {Array.isArray((errors as any).videoUrls) &&
-                    (errors as any).videoUrls.map(
-                      (err: any, i: number) =>
+                  {Array.isArray(errors.videoUrls) &&
+                    errors.videoUrls.map(
+                      (err, i: number) =>
                         err && (
                           <p key={i} className="text-red-500 text-sm">
-                            Video {i + 1}: {err?.message}
+                            Video {i + 1}: {getErrorMessage(err)}
                           </p>
                         ),
                     )}

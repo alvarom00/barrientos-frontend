@@ -12,6 +12,10 @@ interface Property {
 
 const PAGE_SIZE = 8;
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 const AdminDashboard = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [total, setTotal] = useState(0);
@@ -41,9 +45,9 @@ const AdminDashboard = () => {
         setProperties(data.properties ?? []);
         setTotal(data.total ?? 0);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         // Si abortaste, ignorás el error
-        if ((err as any)?.name !== "AbortError") {
+        if (!isAbortError(err)) {
           console.error("Error fetching properties:", err);
           setProperties([]);
           setTotal(0);
@@ -73,9 +77,10 @@ const AdminDashboard = () => {
       if (properties.length === 1 && currentPage > 1) {
         setCurrentPage((prev) => prev - 1);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "desconocido";
       alert(
-        "Error al borrar la propiedad: " + (error?.message ?? "desconocido")
+        "Error al borrar la propiedad: " + message
       );
     }
   };

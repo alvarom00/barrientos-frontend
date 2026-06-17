@@ -1,9 +1,10 @@
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver, type SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useState } from "react";
 import Seo from "../components/Seo";
 import { Turnstile } from "@marsidev/react-turnstile";
+import { useNavigate } from "react-router-dom";
 
 const schema = yup.object().shape({
   nombre: yup.string().required("El nombre y apellido es obligatorio"),
@@ -51,14 +52,17 @@ const schema = yup.object().shape({
   website: yup.string().url("Ingrese una URL válida").optional(),
 });
 
+type PublicarFormValues = yup.InferType<typeof schema>;
+
 export default function Publicar() {
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
     formState: { errors, isValid },
     reset,
-  } = useForm({
-    resolver: yupResolver(schema),
+  } = useForm<PublicarFormValues>({
+    resolver: yupResolver(schema) as Resolver<PublicarFormValues>,
     mode: "onBlur",
   });
 
@@ -74,7 +78,7 @@ export default function Publicar() {
       ? `https://camposbarrientos.com${window.location.pathname}${window.location.search}`
       : undefined;
 
-  const onSubmit = async (data: any) => {
+  const onSubmit: SubmitHandler<PublicarFormValues> = async (data) => {
     setTriedSubmit(false);
     setSuccess(null);
     setError(null);
@@ -94,11 +98,9 @@ export default function Publicar() {
         }),
       });
       if (!res.ok) throw new Error("No se pudo enviar el formulario");
-      setSuccess(
-        "¡Formulario enviado correctamente! Pronto nos pondremos en contacto.",
-      );
       reset();
-    } catch (e) {
+      navigate("/gracias");
+    } catch {
       setError("Ocurrió un error al enviar el formulario. Intente de nuevo.");
     } finally {
       setLoading(false);
@@ -339,8 +341,7 @@ export default function Publicar() {
             className="w-full p-2 border rounded bg-[#fcf7ea]/90 text-[#594317] placeholder:text-[#a69468] focus:outline-primary focus:border-[#ffe8ad] transition"
             placeholder="Ej: 11 2345 6789"
             onInput={(e) => {
-              // @ts-ignore
-              e.target.value = e.target.value.replace(/\D/g, "");
+              e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
             }}
           />
           {errors.telefono && (

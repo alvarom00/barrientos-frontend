@@ -59,8 +59,12 @@ export default function ResetPassword() {
 
       setSuccess(true);
       setTimeout(() => navigate("/admin/login"), 2000);
-    } catch (err: any) {
-      setServerError(err.message || "Ocurrió un error. Intenta nuevamente.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Ocurrió un error. Intenta nuevamente.";
+      setServerError(message);
     } finally {
       setLoading(false);
     }

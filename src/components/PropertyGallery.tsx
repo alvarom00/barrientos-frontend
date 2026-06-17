@@ -31,7 +31,9 @@ function parseYouTube(url: string) {
           embedSrc: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`,
         };
     }
-  } catch {}
+  } catch {
+    return null;
+  }
   return null;
 }
 function parseVimeo(url: string) {
@@ -41,7 +43,9 @@ function parseVimeo(url: string) {
       const id = u.pathname.split("/").filter(Boolean).pop();
       if (id) return { embedSrc: `https://player.vimeo.com/video/${id}` };
     }
-  } catch {}
+  } catch {
+    return null;
+  }
   return null;
 }
 
@@ -63,6 +67,23 @@ export function PropertyGallery({ images, videos }: Props) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const thumbsRef = useRef<HTMLDivElement>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swiping = useRef(false);
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const SWIPE_TRIGGER_PX = 56;
+  const ANGLE_TOLERANCE = 1.2;
+
+  useEffect(() => {
+    if (media.length === 0) {
+      setIndex(0);
+      return;
+    }
+
+    setIndex((currentIndex) =>
+      currentIndex >= media.length ? media.length - 1 : currentIndex,
+    );
+  }, [media.length]);
+
   useEffect(() => {
     const c = thumbsRef.current;
     if (!c) return;
@@ -74,9 +95,8 @@ export function PropertyGallery({ images, videos }: Props) {
     });
   }, [index]);
 
-  if (!media.length) return null;
-
   const go = (dir: number) => {
+    if (!media.length) return;
     setIndex((i) => {
       const next = (i + dir + media.length) % media.length;
       setDirection(dir);
@@ -85,11 +105,6 @@ export function PropertyGallery({ images, videos }: Props) {
   };
 
   // SWIPE solo mobile (sin drag continuo)
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const swiping = useRef(false);
-  const SWIPE_TRIGGER_PX = 56;
-  const ANGLE_TOLERANCE = 1.2;
-
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
@@ -113,7 +128,6 @@ export function PropertyGallery({ images, videos }: Props) {
   };
 
   // ✅ Listener nativo con { passive: false } para evitar el warning
-  const viewerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = viewerRef.current;
     if (!el) return;
@@ -164,6 +178,8 @@ export function PropertyGallery({ images, videos }: Props) {
   };
 
   const current = media[index];
+
+  if (!current) return null;
 
   return (
     <div className="w-full flex flex-col items-center space-y-4">
@@ -221,7 +237,7 @@ export function PropertyGallery({ images, videos }: Props) {
             >
               {current.type === "image" && (
                 <img
-                  src={getAssetUrl((current as any).url)}
+                  src={getAssetUrl(current.url)}
                   alt={`Vista ${index + 1}`}
                   className="w-full h-full object-contain"
                 />
@@ -229,7 +245,7 @@ export function PropertyGallery({ images, videos }: Props) {
 
               {current.type === "video-file" && (
                 <video
-                  src={getAssetUrl((current as any).url)}
+                  src={getAssetUrl(current.url)}
                   controls
                   preload="metadata"
                   className="w-full h-full object-contain md:pointer-events-auto pointer-events-none"
@@ -240,7 +256,7 @@ export function PropertyGallery({ images, videos }: Props) {
                 <div className="w-full h-full md:pointer-events-auto pointer-events-none">
                   <iframe
                     className="w-full h-full"
-                    src={(current as any).embedSrc}
+                    src={current.embedSrc}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     title="Video"
@@ -273,14 +289,14 @@ export function PropertyGallery({ images, videos }: Props) {
             >
               {m.type === "image" && (
                 <img
-                  src={getAssetUrl((m as any).url)}
+                  src={getAssetUrl(m.url)}
                   alt={`Miniatura ${i + 1}`}
                   className="w-16 h-16 object-cover rounded-md"
                 />
               )}
               {m.type === "video-file" && (
                 <video
-                  src={getAssetUrl((m as any).url)}
+                  src={getAssetUrl(m.url)}
                   className="w-16 h-16 object-cover rounded-md bg-black"
                   preload="metadata"
                 />

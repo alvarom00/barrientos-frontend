@@ -6,7 +6,7 @@ type SeoProps = {
   canonical?: string;
   ogImage?: string;
   noindex?: boolean;
-  structuredData?: Record<string, any> | string;
+  structuredData?: Record<string, unknown> | string;
 };
 
 function upsertMeta(attr: "name" | "property", key: string, content?: string) {

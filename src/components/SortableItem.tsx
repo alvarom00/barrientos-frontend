@@ -1,7 +1,15 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import type { ReactNode } from "react";
 
-export default function SortableItem({ id, children }: any) {
+type SortableListeners = ReturnType<typeof useSortable>["listeners"];
+
+type SortableItemProps = {
+  id: string;
+  children: (args: { listeners: SortableListeners }) => ReactNode;
+};
+
+export default function SortableItem({ id, children }: SortableItemProps) {
   const {
     attributes,
     listeners,

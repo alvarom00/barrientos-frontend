@@ -8,8 +8,15 @@ type Property = {
   _id: string;
   title: string;
   location?: string;
+  price?: number;
+  imageUrls?: string[];
   lat?: number | null;
   lng?: number | null;
+};
+
+type PropertiesResponse = {
+  items?: Property[];
+  properties?: Property[];
 };
 
 function FitToMarkers({ markers }: { markers: [number, number][] }) {
@@ -30,7 +37,7 @@ export default function PropertiesMap() {
     (async () => {
       try {
         // Trae varias; ajustá límite si es necesario
-        const data = await api<any>("/properties", "GET", {
+        const data = await api<PropertiesResponse>("/properties", "GET", {
           auth: false,
           query: { pageSize: 500, page: 1 },
         });
@@ -92,7 +99,7 @@ export default function PropertiesMap() {
           return (
             <Marker key={p._id} position={[p.lat, p.lng]}>
               <Popup className="p-0">
-                <PropertyPopupCard property={p as any} />
+                <PropertyPopupCard property={p} />
               </Popup>
             </Marker>
           );

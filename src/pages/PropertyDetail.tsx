@@ -5,7 +5,11 @@ import L from "leaflet";
 import { Check } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { PropertyGallery } from "../components/PropertyGallery";
-import { useForm } from "react-hook-form";
+import {
+  useForm,
+  type Resolver,
+  type SubmitHandler,
+} from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Seo from "../components/Seo";
@@ -29,10 +33,11 @@ interface IProperty {
   bedrooms: number;
   bathrooms: number;
   condition: string;
-  houseMeasures: string[] | any; // tu modelo a veces trae número, lo dejamos flexible
+  houseMeasures: string | number | null;
   services: string[];
   extras: string[];
   slug?: string;
+  keywords?: string[];
 }
 
 const schema = yup.object().shape({
@@ -48,6 +53,8 @@ const schema = yup.object().shape({
   mensaje: yup.string().required("El mensaje es obligatorio"),
   website: yup.string().url("Ingrese una URL válida").optional(),
 });
+
+type ContactFormValues = yup.InferType<typeof schema>;
 
 export default function PropertyDetail() {
   const { id, slug } = useParams<{ id: string; slug?: string }>();
@@ -65,8 +72,8 @@ export default function PropertyDetail() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
+  } = useForm<ContactFormValues>({
+    resolver: yupResolver(schema) as Resolver<ContactFormValues>,
     defaultValues: {
       nombre: "",
       email: "",
@@ -97,7 +104,7 @@ export default function PropertyDetail() {
         setPropertyLoading(false);
       })
       .catch(() => setPropertyLoading(false));
-  }, [id]);
+  }, [API, id]);
 
   // Redirección a /properties/:id/:slug si corresponde
   useEffect(() => {
@@ -139,8 +146,8 @@ export default function PropertyDetail() {
   const structuredData = useMemo(() => {
     if (!property) return undefined;
 
-    const keywords = (property as any).keywords?.length
-      ? (property as any).keywords.join(", ")
+    const keywords = property.keywords?.length
+      ? property.keywords.join(", ")
       : undefined;
 
     const offer = {
@@ -163,7 +170,7 @@ export default function PropertyDetail() {
           }
         : undefined;
 
-    const extras: any[] = [
+    const extras: Record<string, unknown>[] = [
       { "@type": "PropertyValue", name: "Hectáreas", value: property.measure },
       { "@type": "PropertyValue", name: "Ubicación", value: property.location },
     ];
@@ -191,7 +198,7 @@ export default function PropertyDetail() {
     return <p className="p-8 text-red-600">No se encontró la propiedad.</p>;
   }
 
-  async function onSubmit(data: any) {
+  const onSubmit: SubmitHandler<ContactFormValues> = async (data) => {
     setMsg(null);
     setFormLoading(true);
     if (!captchaToken) {
@@ -222,12 +229,12 @@ export default function PropertyDetail() {
       } else {
         setMsg("Ocurrió un error. Intente de nuevo.");
       }
-    } catch (err) {
+    } catch {
       setMsg("Ocurrió un error al enviar la consulta.");
     } finally {
       setFormLoading(false);
     }
-  }
+  };
 
   const pos: [number, number] = [property.lat ?? 0, property.lng ?? 0];
 
@@ -450,8 +457,7 @@ export default function PropertyDetail() {
                 className="w-full p-2 rounded bg-crema border border-primary/30 placeholder:text-[#bba975]"
                 disabled={propertyLoading}
                 onInput={(e) => {
-                  // @ts-ignore
-                  e.target.value = e.target.value.replace(/\D/g, "");
+                  e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
                 }}
               />
               {errors.telefono && (

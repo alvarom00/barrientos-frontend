@@ -1,15 +1,23 @@
 import { Link } from "react-router-dom";
 
 type PropertyPopupCardProps = {
-  property: any;
+  property: {
+    _id: string;
+    title: string;
+    location?: string;
+    price?: number;
+    imageUrls?: string[];
+  };
 };
 
 export default function PropertyPopupCard({ property }: PropertyPopupCardProps) {
+  const imageUrl = property.imageUrls?.[0];
+
   return (
     <div className="p-2 w-56">
-      {property.imageUrls?.length > 0 && (
+      {imageUrl && (
         <img
-          src={property.imageUrls[0]}
+          src={imageUrl}
           alt={property.title}
           className="h-24 w-full object-cover rounded-md"
         />

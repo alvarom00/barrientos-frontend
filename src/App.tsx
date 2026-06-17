@@ -14,6 +14,7 @@ import Nosotros from "./pages/Nosotros";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ScrollToTop from "./components/ScrollToTop";
+import ThankYouPage from "./pages/ThankYouPage";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/properties/:id/:slug?" element={<PropertyDetail />} />
             <Route path="/publicar" element={<Publicar />} />
+            <Route path="/gracias" element={<ThankYouPage />} />
             <Route path="/nosotros" element={<Nosotros />} />
 
             {/* Admin (protegidas) */}

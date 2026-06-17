@@ -1,4 +1,3 @@
-// List input
 export interface DynamicListProps {
   label: string;
   items: string[];
@@ -6,7 +5,7 @@ export interface DynamicListProps {
   onAdd: () => void;
   onRemove: (idx: number) => void;
   placeholder?: string;
-  errors?: (string | undefined)[]; // <-- NUEVO
+  errors?: (string | undefined)[];
 }
 
 export function DynamicList({
@@ -37,10 +36,9 @@ export function DynamicList({
               onClick={() => onRemove(i)}
               className="px-3 bg-red-500 text-white rounded"
             >
-              ×
+              x
             </button>
           </div>
-          {/* Mostrar error de ese input si existe */}
           {errors[i] && (
             <span className="text-red-500 text-xs">{errors[i]}</span>
           )}
@@ -57,32 +55,11 @@ export function DynamicList({
   );
 }
 
-// Checkbox group for features
 export interface FeatureCheckboxGroupProps {
   options: string[];
   selected: string[];
   onChange: (selected: string[]) => void;
 }
-
-export const EXTRAS = [
-  "Tendido eléctrico",
-  "Tanques",
-  "Molinos",
-  "Corrales",
-  "Alambrado",
-  "Galpon/es",
-  "Vivienda",
-  "Aguadas",
-  "Bebederos",
-  "Pileta",
-];
-
-export const SERVICES = [
-  "Internet",
-  "Electricidad",
-  "Teléfono",
-  "Cable",
-];
 
 export function FeatureCheckboxGroup({
   options,
@@ -93,6 +70,7 @@ export function FeatureCheckboxGroup({
     if (selected.includes(opt)) onChange(selected.filter((f) => f !== opt));
     else onChange([...selected, opt]);
   };
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
       {options.map((opt) => (
