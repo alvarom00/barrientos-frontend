@@ -5,6 +5,7 @@ import { useState } from "react";
 import Seo from "../components/Seo";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useNavigate } from "react-router-dom";
+import { markGoogleAdsConversionPending } from "../utils/googleAds";
 
 const schema = yup.object().shape({
   nombre: yup.string().required("El nombre y apellido es obligatorio"),
@@ -99,6 +100,7 @@ export default function Publicar() {
       });
       if (!res.ok) throw new Error("No se pudo enviar el formulario");
       reset();
+      markGoogleAdsConversionPending("publicar");
       navigate("/gracias-publicar");
     } catch {
       setError("Ocurrió un error al enviar el formulario. Intente de nuevo.");
@@ -366,7 +368,7 @@ export default function Publicar() {
 
         <div className="mt-3 flex justify-center">
           <Turnstile
-            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ""}
             onSuccess={(token) => setCaptchaToken(token)}
           />
         </div>

@@ -11,6 +11,7 @@ import * as yup from "yup";
 import Seo from "../components/Seo";
 import { getAssetUrl } from "../utils/getAssetUrl";
 import { Turnstile } from "@marsidev/react-turnstile";
+import { markGoogleAdsConversionPending } from "../utils/googleAds";
 
 interface IProperty {
   _id: string;
@@ -222,6 +223,7 @@ export default function PropertyDetail() {
           mensaje: `Me interesa este campo y quiero obtener más información.\n\nREF: ${property?.ref} - ${property?.title}`,
         });
 
+        markGoogleAdsConversionPending("consulta");
         navigate("/gracias-consulta");
       } else {
         setMsg("Ocurrió un error. Intente de nuevo.");
@@ -482,7 +484,7 @@ export default function PropertyDetail() {
             </div>
             <div className="mt-3 flex justify-center">
               <Turnstile
-                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ""}
                 onSuccess={(token) => setCaptchaToken(token)}
               />
             </div>

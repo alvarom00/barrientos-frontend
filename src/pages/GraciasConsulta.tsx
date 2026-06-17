@@ -1,6 +1,12 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { trackPendingGoogleAdsConversion } from "../utils/googleAds";
 
 export default function GraciasConsulta() {
+  useEffect(() => {
+    trackPendingGoogleAdsConversion("consulta");
+  }, []);
+
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center bg-transparent py-10">
       <div className="text-center p-8 bg-crema rounded-xl shadow-lg animate-fade-in border border-[#ebdbb9] max-w-lg w-full">

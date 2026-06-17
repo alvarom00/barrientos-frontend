@@ -16,12 +16,14 @@ import ResetPassword from "./pages/ResetPassword";
 import ScrollToTop from "./components/ScrollToTop";
 import GraciasConsulta from "./pages/GraciasConsulta";
 import GraciasPublicar from "./pages/GraciasPublicar";
+import GoogleAdsRouteTracker from "./components/GoogleAdsRouteTracker";
 
 function App() {
   return (
     <>
       <BrowserRouter>
         <ScrollToTop />
+        <GoogleAdsRouteTracker />
         <Routes>
           {/* Layout envuelve todo excepto el login */}
           <Route element={<SiteLayout />}>
