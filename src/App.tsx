@@ -14,7 +14,8 @@ import Nosotros from "./pages/Nosotros";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ScrollToTop from "./components/ScrollToTop";
-import ThankYouPage from "./pages/ThankYouPage";
+import GraciasConsulta from "./pages/GraciasConsulta";
+import GraciasPublicar from "./pages/GraciasPublicar";
 
 function App() {
   return (
@@ -28,7 +29,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/properties/:id/:slug?" element={<PropertyDetail />} />
             <Route path="/publicar" element={<Publicar />} />
-            <Route path="/gracias" element={<ThankYouPage />} />
+            <Route path="/gracias-consulta" element={<GraciasConsulta />} />
+            <Route path="/gracias-publicar" element={<GraciasPublicar />} />
             <Route path="/nosotros" element={<Nosotros />} />
 
             {/* Admin (protegidas) */}

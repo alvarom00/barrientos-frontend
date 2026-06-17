@@ -222,7 +222,7 @@ export default function PropertyDetail() {
           mensaje: `Me interesa este campo y quiero obtener más información.\n\nREF: ${property?.ref} - ${property?.title}`,
         });
 
-        navigate("/gracias");
+        navigate("/gracias-consulta");
       } else {
         setMsg("Ocurrió un error. Intente de nuevo.");
       }

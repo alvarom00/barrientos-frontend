@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-export default function ThankYouPage() {
+export default function GraciasConsulta() {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center bg-transparent py-10">
       <div className="text-center p-8 bg-crema rounded-xl shadow-lg animate-fade-in border border-[#ebdbb9] max-w-lg w-full">
@@ -13,7 +13,8 @@ export default function ThankYouPage() {
         </h2>
 
         <p className="text-[#7a6b48] mb-6">
-          Nos pondremos en contacto a la brevedad para brindarte más información.
+          Un asesor se pondrá en contacto a la brevedad para brindarte más
+          información sobre esta propiedad.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -28,7 +29,7 @@ export default function ThankYouPage() {
             to="/comprar"
             className="inline-block px-6 py-2 rounded-lg font-semibold shadow bg-[#c7ae79] text-[#1b2328] hover:opacity-90 transition-all duration-200 active:scale-95 border border-[#b2914a]"
           >
-            Ver campos en venta
+            Ver más campos
           </Link>
         </div>
       </div>

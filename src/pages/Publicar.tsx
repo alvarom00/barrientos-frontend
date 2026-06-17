@@ -99,7 +99,7 @@ export default function Publicar() {
       });
       if (!res.ok) throw new Error("No se pudo enviar el formulario");
       reset();
-      navigate("/gracias");
+      navigate("/gracias-publicar");
     } catch {
       setError("Ocurrió un error al enviar el formulario. Intente de nuevo.");
     } finally {
