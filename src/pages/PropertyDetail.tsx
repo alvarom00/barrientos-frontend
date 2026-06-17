@@ -5,11 +5,7 @@ import L from "leaflet";
 import { Check } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { PropertyGallery } from "../components/PropertyGallery";
-import {
-  useForm,
-  type Resolver,
-  type SubmitHandler,
-} from "react-hook-form";
+import { useForm, type Resolver, type SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Seo from "../components/Seo";
@@ -219,13 +215,14 @@ export default function PropertyDetail() {
         }),
       });
       if (res.ok) {
-        setMsg("¡Consulta enviada correctamente! Pronto nos contactaremos.");
         reset({
           nombre: "",
           email: "",
           telefono: "",
           mensaje: `Me interesa este campo y quiero obtener más información.\n\nREF: ${property?.ref} - ${property?.title}`,
         });
+
+        navigate("/gracias");
       } else {
         setMsg("Ocurrió un error. Intente de nuevo.");
       }
@@ -457,7 +454,10 @@ export default function PropertyDetail() {
                 className="w-full p-2 rounded bg-crema border border-primary/30 placeholder:text-[#bba975]"
                 disabled={propertyLoading}
                 onInput={(e) => {
-                  e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
+                  e.currentTarget.value = e.currentTarget.value.replace(
+                    /\D/g,
+                    "",
+                  );
                 }}
               />
               {errors.telefono && (
